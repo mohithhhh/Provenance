@@ -1,2 +1,8 @@
 fastapi>=0.115.0,<1.0.0
 uvicorn[standard]>=0.32.0,<1.0.0
+
+# Module F (retrieval provenance ledger): ONNX-based embeddings, not
+# sentence-transformers/torch — same real semantic embedding quality for a
+# fraction of the disk footprint (see docs/architecture.md).
+fastembed>=0.8.0,<0.9.0
+numpy>=2.0.0,<3.0.0

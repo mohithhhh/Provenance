@@ -13,7 +13,7 @@ const MODULES: ModuleEntry[] = [
   { letter: 'C', name: 'Trained classifier', status: 'planned' },
   { letter: 'D', name: 'File provenance (C2PA)', status: 'planned' },
   { letter: 'E', name: 'Ensemble dashboard', status: 'planned' },
-  { letter: 'F', name: 'Retrieval provenance ledger', status: 'planned' },
+  { letter: 'F', name: 'Retrieval provenance ledger', status: 'live', href: '/ledger' },
   { letter: 'G', name: 'Attack Lab', status: 'planned' },
 ];
 
