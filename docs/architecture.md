@@ -131,3 +131,71 @@ computed quantity, not fabricated — but it is a structural proxy, not a
 quality metric, and is documented as such everywhere it's shown.
 
 See `docs/benchmark.md` for the actual numbers and how to reproduce them.
+
+## Module F: Retrieval provenance ledger (Phase 3)
+
+Lives in `apps/api` (`app/embeddings.py`, `app/ledger.py`,
+`app/routers/ledger.py`) with a UI at `apps/web/src/app/ledger`. Unlike
+Module A, this needs a real, persistent, server-side store — a browser tab
+can't be the ledger — so this is the first part of the app where the
+frontend makes a genuine network call to the backend (`apps/web/src/lib/api.ts`).
+
+**What it does**: logs arbitrary text (with an embedding) into a SQLite
+database; later, given a candidate text, embeds it and finds the
+nearest-neighbor logged entry by cosine similarity. Because embedding
+similarity captures meaning rather than exact wording, this survives
+paraphrasing far better than exact-match or the statistical/classifier
+methods Modules B and C will use — that's the entire point, and the
+literature basis for it (Krishna, Song, Karpinska, Wieting, Iyyer,
+"Paraphrasing evades detectors of AI-generated text, but retrieval is an
+effective defense", NeurIPS 2023).
+
+**The one thing this can never do**: recognize text it was never told
+about. It's not a general AI-content detector — see `docs/limitations.md`.
+
+### Embeddings: fastembed (ONNX), not sentence-transformers (PyTorch)
+
+Both give real semantic embeddings; the difference is footprint.
+sentence-transformers pulls in PyTorch, which on this project's own dev
+machine meant risking the same disk-space crunch Phase 0 already hit once.
+fastembed runs the same class of model (`BAAI/bge-small-en-v1.5`, 384
+dims) via ONNX Runtime — measured here at ~165MB of installed dependencies
+versus PyTorch's typical several-hundred-MB-to-1GB+ footprint. This is a
+disk-conscious engineering tradeoff specific to this project's constraints,
+not a claim that ONNX embeddings are categorically better.
+
+The model loads lazily (first ledger call, not app startup) and is cached
+under `~/.cache/huggingface` after the first download (~130MB, needs
+network access once per machine — see `apps/api/README.md`).
+
+### Similarity threshold: empirically chosen, not guessed
+
+`DEFAULT_SIMILARITY_THRESHOLD = 0.85` in `app/ledger.py` is based on this
+measured table (`BAAI/bge-small-en-v1.5`, cosine similarity):
+
+| Pair                                          | Similarity |
+| --------------------------------------------- | ---------- |
+| Exact copy                                    | 1.000      |
+| Light paraphrase (reordered clause)           | 0.994      |
+| Heavy paraphrase (reworded, same claim)       | 0.937      |
+| Same topic, **different/contradictory claim** | 0.738      |
+| Unrelated text                                | 0.358      |
+
+0.85 sits cleanly between "genuine paraphrase" (0.92–1.0) and "merely
+on-topic but not the same content" (0.74) — which is also this scheme's
+most important **honest limitation**: a text asserting the opposite of
+something logged ("the committee _rejected_ the budget" vs. "..._approved_
+the budget") scores 0.738, not near-zero. Pure semantic similarity conflates
+_topic_ with _content_ to some degree; it cannot verify factual identity,
+only rough semantic proximity. This is a real, inherent property of
+embedding-based retrieval, not a bug to fix later.
+
+### Storage: SQLite + brute-force cosine similarity
+
+No vector database, no ANN index (FAISS/HNSW/pgvector) — a deliberate
+simplification appropriate at demo scale (hundreds to low-thousands of
+rows): `find_nearest` loads every stored embedding into memory and scores
+them all. A production system at real scale would need an ANN index; this
+one doesn't, and adding one now would be complexity this project doesn't
+need yet. `apps/api/data/ledger.db` is gitignored — nobody's ledger is
+committed to source control.

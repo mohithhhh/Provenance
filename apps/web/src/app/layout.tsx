@@ -32,6 +32,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               <Link href="/watermark" className="hover:text-zinc-900 dark:hover:text-zinc-100">
                 Watermark Lab
               </Link>
+              <Link href="/ledger" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Ledger
+              </Link>
               <a
                 href="https://github.com/mohithhhh/Provenance"
                 className="hover:text-zinc-900 dark:hover:text-zinc-100"

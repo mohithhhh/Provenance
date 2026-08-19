@@ -10,6 +10,7 @@ import {
   type DetectResult,
   type GenerateResult,
 } from '@provenance/watermark-core';
+import { ApiError, logToLedger } from '@/lib/api';
 import { TokenView } from './TokenView';
 import { VerdictCard } from './VerdictCard';
 import { detectedToChips, generatedToChips, type Scheme } from './chips';
@@ -64,6 +65,23 @@ export default function WatermarkLabPage() {
     setDetectGamma(gamma);
     setDetectResult(null);
     setDetectError(null);
+  }
+
+  const [ledgerStatus, setLedgerStatus] = useState<string | null>(null);
+  const [ledgerBusy, setLedgerBusy] = useState(false);
+
+  async function sendGeneratedToLedger() {
+    if (!generated) return;
+    setLedgerBusy(true);
+    setLedgerStatus(null);
+    try {
+      const result = await logToLedger(generated.text, scheme);
+      setLedgerStatus(`Logged as ledger entry #${result.id}.`);
+    } catch (err) {
+      setLedgerStatus(err instanceof ApiError ? err.message : String(err));
+    } finally {
+      setLedgerBusy(false);
+    }
   }
 
   return (
@@ -174,12 +192,24 @@ export default function WatermarkLabPage() {
         {generated && (
           <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
             <TokenView tokens={generatedToChips(generated, scheme)} />
-            <button
-              onClick={sendGeneratedToDetector}
-              className="w-fit text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
-            >
-              Send to detector below ↓
-            </button>
+            <div className="flex flex-wrap items-center gap-4">
+              <button
+                onClick={sendGeneratedToDetector}
+                className="w-fit text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Send to detector below ↓
+              </button>
+              <button
+                onClick={sendGeneratedToLedger}
+                disabled={ledgerBusy}
+                className="w-fit text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                {ledgerBusy ? 'Logging…' : 'Log to Provenance Ledger →'}
+              </button>
+            </div>
+            {ledgerStatus && (
+              <p className="text-xs text-zinc-500 dark:text-zinc-500">{ledgerStatus}</p>
+            )}
           </div>
         )}
       </section>
