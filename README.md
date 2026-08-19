@@ -1,5 +1,7 @@
 # Provenance
 
+
+
 _(working title — may be renamed)_
 
 A multi-method AI-content detection suite. Seven independent modules feed
