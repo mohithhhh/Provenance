@@ -24,5 +24,27 @@ export type {
 } from './types.js';
 
 export { VOCAB } from './vocab.js';
+export { renderTokens, tokenize } from './text.js';
 export { cyrb53, hashToUnitInterval, mulberry32, seededRandom } from './hash.js';
 export { normalCdf, pValueFromZ } from './stats.js';
+
+export {
+  applyAttack,
+  substituteAttack,
+  deleteAttack,
+  insertAttack,
+  reorderAttack,
+  ATTACK_TYPES,
+  ATTACK_LABELS,
+} from './attacks.js';
+export type { AttackType } from './attacks.js';
+
+export { runRobustnessSweep, runMultiAttackSweep, runDeltaTradeoffSweep } from './analysis.js';
+export type {
+  Scheme,
+  RobustnessPoint,
+  RobustnessSweepOptions,
+  MultiAttackSweepOptions,
+  DeltaTradeoffPoint,
+  DeltaTradeoffOptions,
+} from './analysis.js';
