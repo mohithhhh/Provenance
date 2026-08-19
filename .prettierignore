@@ -7,3 +7,6 @@ apps/api/.venv
 apps/api/**/__pycache__
 *.min.js
 package-lock.json
+
+# Next.js-generated, explicitly "do not edit" — reformatting fights its own regen
+apps/web/next-env.d.ts

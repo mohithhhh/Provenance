@@ -1,7 +1,7 @@
-import type { DetectResult, GenerateResult } from '@provenance/watermark-core';
+import type { DetectResult, GenerateResult, Scheme } from '@provenance/watermark-core';
 import type { TokenChip } from './TokenView';
 
-export type Scheme = 'greenlist' | 'gumbel';
+export type { Scheme };
 
 /** Map a generation result's tokens to display chips. Gumbel generation
  * always sets `isGreen: true` (it's the definition of "the token chosen"),
