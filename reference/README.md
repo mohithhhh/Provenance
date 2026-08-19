@@ -1,15 +1,11 @@
 # reference/
 
-This directory holds the original single-file HTML/JS prototype of Module A
-(watermarking) — a from-scratch implementation of the Kirchenbauer et al.
-(2023) green-list/red-list scheme with a toy bigram language model, a z-test
-detector, and a UI to generate/detect.
+This directory was set aside for an original single-file HTML/JS prototype
+of Module A (watermarking) that was expected to seed the Phase 1 port —
+`watermark-lab.html`. It was never added to the repo.
 
-Expected file: **`watermark-lab.html`** (add it here before Phase 1 starts).
-
-It is kept for **porting reference only**. Its algorithm logic is ported
-into `packages/watermark-core` in Phase 1; its `Math.sin()`-based hash is
-replaced with a seeded PRNG (mulberry32) driven by a real hash, since
-`Math.sin()` is not a real source of pseudo-randomness.
-
-Nothing in this directory is imported by the app at build or run time.
+**Phase 1 was implemented directly from the published algorithms instead of
+porting anything** — see `docs/architecture.md`'s "Module A" section for
+what actually shipped (`packages/watermark-core`). This directory is kept
+in case a prototype file is added later, but nothing in the codebase
+depends on it.
