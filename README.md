@@ -1,7 +1,5 @@
 # Provenance
 
-
-
 _(working title — may be renamed)_
 
 A multi-method AI-content detection suite. Seven independent modules feed
@@ -59,7 +57,7 @@ panel, and a commit before the next one starts. See the table in
 [`docs/architecture.md`](docs/architecture.md) for the module list.
 
 - [x] Phase 0 — Scaffold
-- [ ] Phase 1 — Module A: watermarking (port + harden)
+- [x] Phase 1 — Module A: watermarking (green-list + Gumbel schemes, `/watermark`)
 - [ ] Phase 2 — Module A: robustness + tradeoff analysis
 - [ ] Phase 3 — Module F: retrieval provenance ledger
 - [ ] Phase 4 — Module B: zero-shot statistical detector
@@ -107,7 +105,5 @@ docker compose up
 ```
 
 ## Live demo
-
-
 
 Not yet deployed — added in Phase 9.
