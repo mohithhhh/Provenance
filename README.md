@@ -59,7 +59,7 @@ panel, and a commit before the next one starts. See the table in
 - [x] Phase 0 — Scaffold
 - [x] Phase 1 — Module A: watermarking (green-list + Gumbel schemes, `/watermark`)
 - [x] Phase 2 — Module A: robustness + tradeoff analysis (`/watermark/robustness`)
-- [ ] Phase 3 — Module F: retrieval provenance ledger
+- [x] Phase 3 — Module F: retrieval provenance ledger (`/ledger`)
 - [ ] Phase 4 — Module B: zero-shot statistical detector
 - [ ] Phase 5 — Module C: trained classifier + calibration
 - [ ] Phase 6 — Module D: file provenance (C2PA)
@@ -84,7 +84,8 @@ panel, and a commit before the next one starts. See the table in
 npm install
 npm run dev:web              # http://localhost:3000
 
-# Backend (separate terminal)
+# Backend (separate terminal) — needed for the Ledger page (Module F);
+# the Watermark Lab (Module A) runs entirely client-side and doesn't need it.
 cd apps/api
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -r requirements-dev.txt

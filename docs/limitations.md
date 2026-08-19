@@ -19,6 +19,15 @@ and apply regardless of phase.
   it never saw — this is a fundamental property of retrieval-based
   defenses, not a bug. See Krishna et al., "Paraphrasing evades detectors
   of AI-generated text, but retrieval is an effective defense."
+  It also has a subtler, measured limitation: its embedding similarity
+  conflates _topic_ with _content_ to some degree. In this project's own
+  measurements (`docs/architecture.md`), a sentence asserting the
+  **opposite** of a logged claim ("the committee _rejected_..." vs. "...
+  _approved_...") scores 0.738 cosine similarity — closer to a genuine
+  paraphrase (0.92–1.0) than to unrelated text (0.36) than one might
+  expect. The 0.85 threshold is chosen to sit clear of that specific case,
+  but it means this module verifies rough semantic proximity, not factual
+  identity.
 - **The Attack Lab (Module G) demonstrates robustness under the attacks it
   implements** (paraphrase, synonym substitution, reordering, truncation).
   It is not proof of robustness against attacks outside that set, nor
