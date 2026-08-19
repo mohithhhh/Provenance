@@ -58,7 +58,7 @@ panel, and a commit before the next one starts. See the table in
 
 - [x] Phase 0 — Scaffold
 - [x] Phase 1 — Module A: watermarking (green-list + Gumbel schemes, `/watermark`)
-- [ ] Phase 2 — Module A: robustness + tradeoff analysis
+- [x] Phase 2 — Module A: robustness + tradeoff analysis (`/watermark/robustness`)
 - [ ] Phase 3 — Module F: retrieval provenance ledger
 - [ ] Phase 4 — Module B: zero-shot statistical detector
 - [ ] Phase 5 — Module C: trained classifier + calibration

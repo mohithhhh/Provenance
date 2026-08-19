@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import {
   detectGreenListText,
@@ -84,20 +85,28 @@ export default function WatermarkLabPage() {
           .
         </p>
 
-        <div className="flex w-fit gap-1 rounded-full border border-zinc-200 p-1 text-sm dark:border-zinc-800">
-          {(['greenlist', 'gumbel'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setScheme(s)}
-              className={`rounded-full px-3 py-1 transition ${
-                scheme === s
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-              }`}
-            >
-              {s === 'greenlist' ? 'Green-list' : 'Gumbel'}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex w-fit gap-1 rounded-full border border-zinc-200 p-1 text-sm dark:border-zinc-800">
+            {(['greenlist', 'gumbel'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setScheme(s)}
+                className={`rounded-full px-3 py-1 transition ${
+                  scheme === s
+                    ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
+                    : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
+                }`}
+              >
+                {s === 'greenlist' ? 'Green-list' : 'Gumbel'}
+              </button>
+            ))}
+          </div>
+          <Link
+            href="/watermark/robustness"
+            className="text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
+            Robustness Lab →
+          </Link>
         </div>
       </div>
 
