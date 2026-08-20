@@ -199,3 +199,85 @@ them all. A production system at real scale would need an ANN index; this
 one doesn't, and adding one now would be complexity this project doesn't
 need yet. `apps/api/data/ledger.db` is gitignored — nobody's ledger is
 committed to source control.
+
+## Module B: Zero-shot statistical detector (Phase 4)
+
+Lives in `apps/api` (`app/detectors/models.py`, `app/detectors/perplexity.py`,
+`app/routers/detect.py`), UI at `apps/web/src/app/detect`. The first module
+in this project that needs an actual generative language model, not just
+embeddings — there's no lightweight substitute for measuring how
+"surprised" a language model is by a text.
+
+### Two small, same-family models: gpt2 (performer) + distilgpt2 (observer)
+
+`torch` + `transformers`, loaded lazily like Module F's embedding model.
+Chosen deliberately small (124M / 82M params) — real LM-based detection
+methods normally use much larger models, but this project needs something
+that downloads and runs on a laptop CPU in well under a second per request
+once warm (measured: ~50ms/request after the one-time model load). gpt2
+and distilgpt2 share a tokenizer/vocabulary (distilgpt2 is literally
+distilled from gpt2), which the cross-perplexity method below requires.
+
+### Three signals, one pass over both models
+
+- **Binoculars-style cross-perplexity** — an independent implementation of
+  the general approach in Hans, Schwarzschild, Cherepanova, Kazemi, Saha,
+  Goldblum, Geiping, Goldstein, _"Binoculars: Zero-Shot Detection of
+  LLM-Generated Text"_ (2024). The paper pairs two ~7B models and
+  calibrates a threshold (0.9015) on a large corpus; this project's much
+  smaller model pair needed its own calibration (below) — the paper's
+  threshold doesn't transfer to a completely different model pair and
+  scale. `binocularsScore = perplexity(text) / crossPerplexity(text)`,
+  where cross-perplexity is the exponentiated mean cross-entropy between
+  the two models' next-token distributions at each position, both
+  conditioned on the same real prefix. Lower score → more machine-like.
+- **GLTR-style rank buckets** — Gehrmann, Strobelt, Rush, _"GLTR:
+  Statistical Detection and Visualization of Generated Text"_ (2019): the
+  rank of each actual token within the performer model's own predicted
+  ranking (0 = the model's top pick), bucketed into top-10/top-100/
+  top-1000/rest and rendered as a heatmap.
+- **Burstiness** — `(σ - μ) / (σ + μ)` over per-sentence mean surprisal;
+  also from the GLTR line of work. Shown as a supporting statistic, not a
+  standalone verdict.
+
+### Threshold calibration: measured, not guessed
+
+`scripts/calibrate_binoculars.py` (committed, reproducible) scores 8
+original human-authored sentences (written for this project — not scraped
+from any corpus) against 8 sentences gpt2 generated from itself (seed 0,
+so exactly reproducible) — the cleanest possible source of "genuinely
+machine-generated text," no licensing question at all:
+
+|                     | min   | max   |
+| ------------------- | ----- | ----- |
+| AI (gpt2-generated) | 0.093 | 0.225 |
+| Human (original)    | 0.294 | 0.725 |
+
+Clean separation, gap `[0.225, 0.294]`. `AI_THRESHOLD = 0.24`,
+`HUMAN_THRESHOLD = 0.28` in `app/routers/detect.py`, leaving a narrow
+"uncertain" band between them. This is a small, illustrative calibration
+set (16 samples) — not a statistically powered benchmark. That rigor is
+Module C's Phase 5 job, using the HC3 dataset.
+
+### Two honest caveats found while building this, not swept under the rug
+
+- **Famous/memorized phrases can look anomalously predictable.** An early
+  manual test scored "The quick brown fox jumps over the lazy dog" — it
+  landed comfortably in the human range (0.41; the pangram's fame didn't
+  break the method here), but the risk is real and worth stating plainly:
+  a small LM's perplexity reflects what it memorized during pretraining as
+  much as what's "natural," so a human quoting a famous line or cliché
+  can score differently than the same person's original prose. This
+  method measures predictability-to-this-specific-model, not humanness.
+- **This shares the base-model blind spot documented in
+  `docs/limitations.md`.** Recent research finds that text from
+  non-instruction-tuned base models tends to evade exactly this class of
+  statistical detector — Module B has not been tested against that case
+  specifically, and is expected to share the weakness rather than being
+  immune to it.
+
+### Sentence splitting
+
+`split_sentences()` is a regex splitter on `.!?` boundaries, not a real
+sentence tokenizer — it mis-splits on abbreviations ("Dr. Smith"), the
+same category of honest simplification as Module A's toy `tokenize()`.

@@ -1,13 +1,14 @@
 """Provenance API — FastAPI backend.
 
-Phase 3 adds Module F (retrieval provenance ledger). Modules B, C, D, G are
-added in later phases; see the project README and docs/ for the phased
-build plan.
+Phase 3 added Module F (retrieval provenance ledger); Phase 4 adds Module B
+(zero-shot statistical detector). Modules C, D, G are added in later
+phases; see the project README and docs/ for the phased build plan.
 """
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from .routers.detect import router as detect_router
 from .routers.ledger import router as ledger_router
 
 app = FastAPI(
@@ -31,6 +32,7 @@ app.add_middleware(
 )
 
 app.include_router(ledger_router)
+app.include_router(detect_router)
 
 
 @app.get("/health")
