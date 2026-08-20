@@ -75,3 +75,25 @@ past δ≈4 (green fraction plateaus around 90–92%, since it's bounded below
 perplexity/fluency — this toy grammar has no model to measure true text
 quality against, which is a real limitation, not a shortcut; see
 `docs/architecture.md`.
+
+## Module B: Zero-shot statistical detector (Phase 4)
+
+**Reproduce**: `cd apps/api && python scripts/calibrate_binoculars.py`
+(venv active). AI samples are generated live by gpt2 itself with a fixed
+seed (0); human samples are original sentences written for this project —
+see `docs/architecture.md` for why (no scraped/copyrighted text, and no
+risk of the small model having memorized them).
+
+### Binoculars score by sample (gpt2 performer / distilgpt2 observer)
+
+|                             | min   | max   |
+| --------------------------- | ----- | ----- |
+| AI (gpt2-generated, seed=0) | 0.093 | 0.225 |
+| Human (original)            | 0.294 | 0.725 |
+
+Clean separation on this small calibration set (8 samples each): gap
+`[0.225, 0.294]`. `AI_THRESHOLD = 0.24` / `HUMAN_THRESHOLD = 0.28` in
+`apps/api/app/routers/detect.py` sit inside that gap. This is a small,
+illustrative calibration, not a statistically powered benchmark — that's
+what Module C's Phase 5 HC3-based evaluation is for, and Module B's
+numbers should be read with that scale in mind.

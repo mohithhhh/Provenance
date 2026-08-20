@@ -84,3 +84,39 @@ export interface StatsResponse {
 export function ledgerStats(): Promise<StatsResponse> {
   return request<StatsResponse>('/ledger/stats');
 }
+
+export type Bucket = 'top10' | 'top100' | 'top1000' | 'rest';
+
+export interface DetectToken {
+  token: string;
+  rank: number;
+  bucket: Bucket;
+}
+
+export interface DetectSentence {
+  text: string;
+  meanSurprisal: number;
+  topKFraction: number;
+  scored: boolean;
+}
+
+export type StatisticalVerdict = 'likely-ai' | 'likely-human' | 'uncertain';
+
+export interface DetectStatisticalResponse {
+  verdict: StatisticalVerdict;
+  binocularsScore: number;
+  perplexity: number;
+  crossPerplexity: number;
+  top10Fraction: number;
+  burstiness: number;
+  totalTokens: number;
+  tokens: DetectToken[];
+  sentences: DetectSentence[];
+}
+
+export function detectStatistical(text: string): Promise<DetectStatisticalResponse> {
+  return request<DetectStatisticalResponse>('/detect/statistical', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+}

@@ -35,6 +35,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               <Link href="/ledger" className="hover:text-zinc-900 dark:hover:text-zinc-100">
                 Ledger
               </Link>
+              <Link href="/detect" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Statistical Detector
+              </Link>
               <a
                 href="https://github.com/mohithhhh/Provenance"
                 className="hover:text-zinc-900 dark:hover:text-zinc-100"
