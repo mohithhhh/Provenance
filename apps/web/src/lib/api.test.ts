@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ApiError, checkLedger, ledgerStats, listLedgerEntries, logToLedger } from './api';
+import {
+  ApiError,
+  checkLedger,
+  detectStatistical,
+  ledgerStats,
+  listLedgerEntries,
+  logToLedger,
+} from './api';
 
 describe('api client', () => {
   const originalFetch = global.fetch;
@@ -74,5 +81,30 @@ describe('api client', () => {
     expect(result).toEqual({ count: 3 });
     const [url] = fetchMock.mock.calls[0]!;
     expect(String(url)).toMatch(/\/ledger\/stats$/);
+  });
+
+  it('detectStatistical posts to /detect/statistical with the text', async () => {
+    const responseBody = {
+      verdict: 'likely-human',
+      binocularsScore: 0.5,
+      perplexity: 100,
+      crossPerplexity: 200,
+      top10Fraction: 0.3,
+      burstiness: 0.1,
+      totalTokens: 10,
+      tokens: [],
+      sentences: [],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(responseBody), { status: 200 }));
+    global.fetch = fetchMock;
+
+    const result = await detectStatistical('hello world');
+
+    expect(result).toEqual(responseBody);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toMatch(/\/detect\/statistical$/);
+    expect(JSON.parse(init.body)).toEqual({ text: 'hello world' });
   });
 });

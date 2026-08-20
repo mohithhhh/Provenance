@@ -28,6 +28,14 @@ and apply regardless of phase.
   expect. The 0.85 threshold is chosen to sit clear of that specific case,
   but it means this module verifies rough semantic proximity, not factual
   identity.
+- **Module B (statistical detector) measures predictability to two small
+  specific models, not "humanness."** A human quoting a famous line or a
+  well-worn cliché can score differently than the same person's original
+  prose, because a small language model's perplexity partly reflects what
+  it memorized during pretraining. Manual testing during development (see
+  `docs/architecture.md`) didn't break the method, but the risk is real
+  and inherent to any perplexity-based approach, not specific to this
+  implementation.
 - **The Attack Lab (Module G) demonstrates robustness under the attacks it
   implements** (paraphrase, synonym substitution, reordering, truncation).
   It is not proof of robustness against attacks outside that set, nor

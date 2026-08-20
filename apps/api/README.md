@@ -45,3 +45,26 @@ cached under `~/.cache/huggingface` and loads in well under a second.
 
 Ledger data lives in `apps/api/data/ledger.db` (SQLite, gitignored — never
 committed).
+
+## Module B (statistical detector) notes
+
+Uses real `gpt2` (~525MB) and `distilgpt2` (~260MB) models via
+`transformers`/`torch` — no lightweight substitute exists for this one.
+Same lazy-load pattern as Module F: `/health` and startup don't pay the
+cost, only the first `/detect/statistical` call does. Cached under
+`~/.cache/huggingface` afterward, same as the embedding model, and loads
+in well under a second once cached.
+
+**If a model download hangs** rather than failing outright (seen once
+during development — files fully downloaded but the process sat idle for
+tens of minutes on a stalled network round-trip), the fix is to confirm
+the files are actually present (`du -sh ~/.cache/huggingface/hub/models--gpt2`)
+and, if so, retry with `HF_HUB_OFFLINE=1` set to skip the network check
+entirely and load straight from the local cache:
+
+```bash
+HF_HUB_OFFLINE=1 uvicorn app.main:app --reload
+```
+
+`scripts/calibrate_binoculars.py` reproduces Module B's threshold
+calibration — see `docs/architecture.md` and `docs/benchmark.md`.
