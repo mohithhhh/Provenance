@@ -2,6 +2,8 @@
 
 _(working title — may be renamed)_
 
+
+
 A multi-method AI-content detection suite. Seven independent modules feed
 one ensemble layer that shows **disagreement** between methods rather than
 hiding it behind a single confidence number — and includes a module built
