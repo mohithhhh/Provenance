@@ -56,14 +56,24 @@ something quietly assumed away.
    - **Build output directory**: `apps/web/out`
    - **Framework preset**: None (a plain static site — the commands above
      already produce the static export Cloudflare Pages wants directly)
-3. **Build-time environment variable** (Cloudflare Pages → your project →
+3. **`wrangler.jsonc` at the repo root is required.** Cloudflare's current
+   deploy pipeline runs a generic `npx wrangler deploy` regardless of
+   dashboard settings, and that command needs its own config to know this
+   is a Pages project (not a Worker) and where the built files are — the
+   dashboard's "Build output directory" field alone isn't enough. Without
+   it, the deploy step fails with `The Cloudflare application detection
+logic has been run in the root of a workspace instead of targeting a
+specific project` even though the build itself succeeded. This repo
+   already has one (`pages_build_output_dir: "apps/web/out"`) — no action
+   needed unless you've renamed `apps/web`.
+4. **Build-time environment variable** (Cloudflare Pages → your project →
    Settings → Environment variables): `NEXT_PUBLIC_API_URL` = the Render
    URL from the backend section above. This is baked in at build time for
    a static export (`apps/web/src/lib/api.ts` reads
    `process.env.NEXT_PUBLIC_API_URL`), not read at runtime — changing it
    means rebuilding, not just restarting.
-4. Deploy. Note the resulting `*.pages.dev` URL (or your custom domain).
-5. Back on Render: set `ALLOWED_ORIGINS` to that URL (comma-separated if
+5. Deploy. Note the resulting `*.pages.dev` URL (or your custom domain).
+6. Back on Render: set `ALLOWED_ORIGINS` to that URL (comma-separated if
    you have more than one, e.g. a custom domain and the `*.pages.dev` one)
    and let the backend redeploy so CORS actually allows the real frontend
    origin instead of the permissive local-dev default (`*`).

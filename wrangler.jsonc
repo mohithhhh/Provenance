@@ -1,0 +1,9 @@
+// Tells Cloudflare's unified Workers/Pages deploy pipeline that this is a
+// Pages project (static assets, not a Worker) and where the built files
+// are. Without this, `wrangler deploy`'s auto-detection has nothing to go
+// on when it runs from a monorepo root — see docs/deploy.md.
+{
+  "name": "provenance",
+  "compatibility_date": "2026-09-13",
+  "pages_build_output_dir": "apps/web/out",
+}
