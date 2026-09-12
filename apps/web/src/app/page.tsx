@@ -12,7 +12,7 @@ const MODULES: ModuleEntry[] = [
   { letter: 'B', name: 'Zero-shot statistical detector', status: 'live', href: '/detect' },
   { letter: 'C', name: 'Trained classifier', status: 'live', href: '/classify' },
   { letter: 'D', name: 'File provenance (C2PA)', status: 'live', href: '/provenance' },
-  { letter: 'E', name: 'Ensemble dashboard', status: 'planned' },
+  { letter: 'E', name: 'Ensemble dashboard', status: 'live', href: '/ensemble' },
   { letter: 'F', name: 'Retrieval provenance ledger', status: 'live', href: '/ledger' },
   { letter: 'G', name: 'Attack Lab', status: 'live', href: '/attack-lab' },
 ];

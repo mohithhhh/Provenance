@@ -64,7 +64,7 @@ panel, and a commit before the next one starts. See the table in
 - [x] Phase 5 — Module C: trained classifier + calibration (`/classify`)
 - [x] Phase 6 — Module D: file provenance (C2PA) (`/provenance`)
 - [x] Phase 7 — Module G: Attack Lab (`/attack-lab`)
-- [ ] Phase 8 — Module E: ensemble dashboard
+- [x] Phase 8 — Module E: ensemble dashboard (`/ensemble`)
 - [ ] Phase 9 — Batch mode, benchmark page, polish
 
 ## Tech stack

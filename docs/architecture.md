@@ -559,3 +559,89 @@ published result this whole module cites (Krishna et al., 2023 used a
 full general-purpose paraphraser). Reported honestly rather than tuned
 away or left for the reader to notice — see `docs/benchmark.md` for the
 full reading.
+
+## Module E: Ensemble dashboard (Phase 8)
+
+Lives entirely in `apps/web` (`src/lib/ensemble.ts`, UI at
+`src/app/ensemble`) — no new backend endpoint. One input triggers Modules
+B, C, and F (already-built endpoints, called directly from the client,
+the same pattern the Attack Lab established in Phase 7), and every
+module's own result is always shown as-is, never blended away, alongside
+one combined estimate. Modules A and D are deliberately excluded: A needs
+a known watermark key (arbitrary pasted text has no watermark to find, the
+same reasoning the Attack Lab applies), and D is **cryptographic**
+verification of an attached signed claim, not a statistical estimate —
+mixing "verified" and "inferred" into one number would be exactly the
+kind of false precision this whole project argues against (see Module D's
+own "cryptographically verified" vs. "statistically inferred" framing).
+
+### The combination: inverse-variance weighting, not an invented formula
+
+`ensemble.ts` combines Module B and C's independent AI-probability
+estimates via **inverse-variance weighting** — the standard fixed-effect
+meta-analysis technique (see the Cochrane Handbook for Systematic
+Reviews): each estimate is weighted by `1/variance`, so a more confident
+(lower-variance) estimate pulls the combined result toward it more than a
+less confident one, and the combined variance is `1/Σ(1/varianceᵢ)`. This
+was picked over inventing an arbitrary weighted average specifically
+because it's a real, citable statistical method, not because it's the
+only reasonable choice.
+
+The two modules' variances are not equally real:
+
+- **Module C already has one** — its split conformal interval
+  (`docs/architecture.md`'s Module C section) is a genuine, calibrated
+  quantity. `classifierToEstimate()` converts it to a variance via the
+  standard CI-to-SE conversion (`half-width / z`), the same step used to
+  pool studies reported as confidence intervals in a real meta-analysis.
+- **Module B has no native per-instance interval.** `binocularsToEstimate()`
+  constructs an honestly-labeled _heuristic_ instead: a logistic mapping of
+  the raw score onto Module B's own uncertain band (scored so the band's
+  midpoint is 50/50 and the calibration data's real range, ~0.09-0.73,
+  spans close to 0%-100%), with variance shrinking as the score moves
+  further from that midpoint. This is a real per-instance signal (it does
+  vary with the actual score, unlike a fixed constant) but it is a
+  construction, not a fitted statistical quantity — documented as such in
+  the code, and contrasted directly against Module C's real interval so
+  the difference in rigor isn't hidden.
+
+### Disagreement overrides the math
+
+A combined score computed from two active disagreements is exactly the
+false-precision problem this project exists to avoid, so
+`computeEnsemble()` checks the two modules' own three-way verdicts first:
+if one says `likely-ai` and the other says `likely-human`, the result is
+reported as `disagreement` outright — the weighted average is still
+computed and shown (for transparency), but the verdict badge reads
+"Modules disagree — abstaining" rather than a confident-looking number.
+This is the literal "abstain state when signals are ... contradictory"
+the phase plan asked for, implemented as a simple rule over two verdicts
+that already exist, not a new fuzzy confidence threshold.
+
+### The per-sentence heatmap reuses Module B's own data — it is not a trained segmentation model
+
+Real per-segment classification of mixed human/AI documents is its own
+line of research and its own model, trained specifically for that task —
+out of scope here. `SentenceHeatmap.tsx` instead repurposes data Module B
+_already computes_: each sentence's top-10-token fraction
+(`app/detectors/perplexity.py`'s GLTR-style signal), rendered as a
+continuous blue color wash (one hue, intensity only — the "sequential"
+color job for encoding magnitude, per this project's data-viz convention;
+the exact hue is the validated default sequential blue, applied as a
+continuous alpha channel rather than discrete steps so one hue works on
+both light and dark surfaces without a second hardcoded ramp). This is a
+real, honest visual proxy for "which spans look more predictable to
+Module B" — not a claim of trained per-segment AI/human classification.
+
+### What Phase 8 does not cover
+
+Module C has no per-sentence output (`app/routers/classify.py` scores the
+whole document's stylometric features at once), so the heatmap uses only
+Module B's data — extending Module C to per-sentence scoring was
+explicitly framed as optional ("if extended") in the phase plan and was
+left out here rather than adding a second, less-grounded heatmap signal
+for a proportionally small gain. Module F's check runs read-only (no
+`ledger/log` call) so opening this dashboard never writes to the shared
+ledger — a real consequence worth knowing: unlike the Attack Lab, this
+page will essentially always report "no match" here for fresh text unless
+it happens to already be logged.
