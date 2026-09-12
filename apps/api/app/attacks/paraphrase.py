@@ -1,17 +1,24 @@
 """Module G's fourth attack: real paraphrasing via a small local T5 model —
 an actual model rewriting meaning, not a structural word/sentence shuffle
-(see attacks.py), and expected to be considerably more damaging to every
-detector in this suite than any of the other three attacks.
+(see attacks.py). Paraphrasing in general is the attack that defeats most
+published AI-text detectors (see Module F's docs) — but measured here,
+this specific small checkpoint turned out to be the *least* damaging of
+this module's four attacks, not the most (see docs/benchmark.md and
+docs/architecture.md for the full, honest reading of why).
 
-`mrm8488/t5-small-finetuned-quora-for-paraphrasing` (T5-small, ~240MB) is
-the smallest known real fine-tuned paraphrase checkpoint on Hugging Face —
-picked specifically to minimize the download for a project already
-constrained by disk space (see docs/architecture.md), at the cost of
-paraphrase quality lower than the T5-base-sized alternatives the wider
-community more commonly uses.
+`mrm8488/t5-small-finetuned-quora-for-paraphrasing` (T5-small) was picked
+as the smallest known real fine-tuned paraphrase checkpoint on Hugging
+Face — measured at ~440MB downloaded (larger than a bare T5-small's ~240MB
+parameter count would suggest, since this checkpoint stores an untied
+`lm_head` alongside the shared embedding table — see the "tied weights"
+warning `get_model()` logs), at the cost of paraphrase quality lower than
+the T5-base-sized alternatives the wider community more commonly uses. It
+was also fine-tuned specifically on Quora question-pairs: it makes small,
+conservative edits on declarative sentences — sometimes none at all — and
+does its best rewriting on question-shaped input.
 
 This attack needs real network access (or an already-populated local
-cache) and ~240MB of free disk the first time it runs, unlike every other
+cache) and ~440MB of free disk the first time it runs, unlike every other
 attack in this module, which is why it's the one attack type this class of
 error is worth handling explicitly rather than letting a raw exception
 escape to the caller.
@@ -29,7 +36,7 @@ MODEL_NAME = "mrm8488/t5-small-finetuned-quora-for-paraphrasing"
 class ParaphraserUnavailable(RuntimeError):
     """Raised when the T5 paraphrase model can't be loaded: no local cache,
     and the download failed (no network access, or insufficient disk
-    space for the ~240MB it needs). Not a bug in this attack — it's fully
+    space for the ~440MB it needs). Not a bug in this attack — it's fully
     implemented and works the moment the model is available; see
     docs/limitations.md."""
 
@@ -39,7 +46,7 @@ def _load_or_raise(load: Callable[[], Any], what: str) -> Any:
         return load()
     except OSError as err:
         raise ParaphraserUnavailable(
-            f"Couldn't load {what} ({MODEL_NAME}, ~240MB) — no local cache, "
+            f"Couldn't load {what} ({MODEL_NAME}, ~440MB) — no local cache, "
             "and the download failed (no network access, or insufficient "
             "disk space). See docs/limitations.md."
         ) from err

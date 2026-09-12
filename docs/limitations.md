@@ -63,12 +63,18 @@ and apply regardless of phase.
   implements** (paraphrase, synonym substitution, reordering, truncation).
   It is not proof of robustness against attacks outside that set, nor
   against an adaptive attacker who has access to this suite's own source.
-  The paraphrase attack specifically needs a ~240MB local model
-  (`mrm8488/t5-small-finetuned-quora-for-paraphrasing`) that this project's
-  own dev machine did not have disk space for while building this phase —
-  it's fully implemented and reports a clear "unavailable" state rather
-  than failing silently, but wasn't run for real here; see
-  `docs/architecture.md`.
+  The paraphrase attack needs a ~440MB local model
+  (`mrm8488/t5-small-finetuned-quora-for-paraphrasing`); if it can't load
+  (no disk, no network) it reports a clear "unavailable" state rather than
+  failing silently — see `docs/architecture.md`. Run for real
+  (`docs/benchmark.md`), it turned out to be the _least_ damaging attack
+  to Modules B, C, and F here, the opposite of this project's own stated
+  expectation — this specific small, Quora-question-tuned checkpoint makes
+  conservative edits rather than a full rewrite on the kind of narrative
+  text in this benchmark. That's a property of this one small model, not
+  evidence that real paraphrasing in general is weak against these
+  detectors — see `docs/benchmark.md`'s Module G section for the full
+  reasoning.
 - **Module C does not generalize past HC3's training distribution.**
   Module G's benchmark script (`scripts/attack_lab_benchmark.py`) found
   Module C scoring 7/16 (44% — worse than chance) on a set of short

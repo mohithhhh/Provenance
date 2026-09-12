@@ -29,3 +29,8 @@ Pillow>=10.0.0,<13.0.0
 # Needed for FastAPI/Starlette's multipart file-upload parsing (Module D's
 # /provenance/file endpoint is this project's first file-upload route).
 python-multipart>=0.0.12,<1.0.0
+
+# Module G (Attack Lab): the T5 paraphrase model's tokenizer is
+# SentencePiece-based (spiece.model) — without this, transformers falls
+# back to a tiktoken-format loader that can't read it at all.
+sentencepiece>=0.2.0,<0.3.0

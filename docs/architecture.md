@@ -475,39 +475,54 @@ Fisher-Yates shuffle over a `strength` fraction of sentences, mirroring
 `reorderAttack` in `packages/watermark-core/src/attacks.ts`), and
 **truncation** (keep the first `(1 - strength)` fraction of words). The
 fourth, **paraphrase** (`paraphrase.py`), is real: an actual small T5 model
-rewriting meaning, not a word/sentence shuffle — and expected to be
-considerably more damaging to every other module than the other three, the
-same point Module F's own docs make about paraphrase being the attack that
-defeats most published detectors.
+rewriting meaning, not a word/sentence shuffle. Paraphrasing in general is
+the attack that defeats most published detectors (the same point Module
+F's own docs make) — but measured here, this specific small checkpoint
+turned out to be the _least_ damaging of the four; see "A real discovery"
+below for why that's a property of the model, not evidence against the
+general claim.
 
 ### The paraphrase attack needed a disk-space call, made with the user
 
-`mrm8488/t5-small-finetuned-quora-for-paraphrasing` (T5-small, ~240MB) was
-picked as the smallest known real fine-tuned paraphrase checkpoint on
-Hugging Face, specifically because this phase was built while the dev
+`mrm8488/t5-small-finetuned-quora-for-paraphrasing` (T5-small) was picked
+as the smallest known real fine-tuned paraphrase checkpoint on Hugging
+Face, specifically because this phase was first built while the dev
 machine had **~178MB free disk** — not enough for even the smallest
-reasonable option. Asked directly, the call was: ship the three structural
-attacks fully now, and make the paraphrase attack's _unavailability_ a
-first-class, well-tested state rather than skip it silently or attempt a
-download that would fail. `ParaphraserUnavailable` (`paraphrase.py`) wraps
-any load failure (`OSError` — no space, or no network) into a clear
-message; the router turns that into a 503; the UI surfaces it inline
-rather than crashing. This is fully implemented, real code — it will work
-correctly the moment the model is actually available — not a stub.
+reasonable option (measured at ~440MB once actually downloaded — a bare
+T5-small's parameter count would suggest less, but this checkpoint stores
+an untied `lm_head` alongside the shared embedding table). Asked directly,
+the initial call was: ship the three structural attacks fully now, and
+make the paraphrase attack's _unavailability_ a first-class, well-tested
+state rather than skip it silently or attempt a download that would fail.
+`ParaphraserUnavailable` (`paraphrase.py`) wraps any load failure
+(`OSError` — no space, or no network) into a clear message; the router
+turns that into a 503; the UI surfaces it inline rather than crashing.
 
-### Why the benchmark script doesn't include Module A or the paraphrase attack
+Disk freed up later in the same session, and the model was downloaded for
+real (also needing `sentencepiece`, added to `requirements.txt` — T5's
+tokenizer is SentencePiece-based, and its absence surfaced as a confusing
+tiktoken-related error rather than a clear message, since Hugging Face
+falls back to a tiktoken loader that can't read a SentencePiece file
+either). It's now a real, tested attack — `tests/test_paraphrase.py`'s
+`TestParaphraseRealModel` exercises it directly, same "use the real thing,
+no fake would test anything meaningful" reasoning as Module B. Trained
+specifically on Quora question-pairs, it makes small, conservative edits
+on declarative sentences and does its most substantive rewriting on
+question-shaped input — a real, measured property of this specific
+checkpoint, not a flaw in the attack's implementation.
+
+### Why the benchmark script doesn't include Module A
 
 `scripts/attack_lab_benchmark.py` measures accuracy-under-attack for
-Modules B, C, and F only. Module A (watermarking) already has its own real
-robustness benchmark against its own native structural attacks (Phase 2,
-`docs/benchmark.md`) — it's TypeScript-only (`packages/watermark-core`),
-so including it here would mean either shelling out to Node from a Python
-script or reimplementing the same attacks a second time in Python, for a
-result Phase 2 already reports honestly. The interactive Attack Lab UI is
-where a live A/B/C/F comparison actually happens, for a single sample the
-user picks. The paraphrase attack isn't in the automated benchmark for the
-same disk-space reason it isn't downloaded above: this script reports only
-real, actually-measured numbers, never a fabricated or assumed one.
+Modules B, C, and F, across all four attack types (paraphrase run once,
+with no strength dial — see the script's own docstring for why). Module A
+(watermarking) already has its own real robustness benchmark against its
+own native structural attacks (Phase 2, `docs/benchmark.md`) — it's
+TypeScript-only (`packages/watermark-core`), so including it here would
+mean either shelling out to Node from a Python script or reimplementing
+the same attacks a second time in Python, for a result Phase 2 already
+reports honestly. The interactive Attack Lab UI is where a live A/B/C/F
+comparison actually happens, for a single sample the user picks.
 
 ### A real discovery from running it: Module C doesn't generalize past HC3
 
@@ -525,3 +540,22 @@ or genre. This is a genuine, previously-undocumented limitation, not an
 attack finding — see `docs/limitations.md`, and see
 `docs/architecture.md`'s Module C section for a second, related bug this
 same benchmark run surfaced (the verdict logic itself was broken).
+
+### A second real discovery: paraphrase was the _weakest_ attack, not the strongest
+
+Once disk space allowed the T5 paraphrase model to actually run (see
+above), the benchmark's full table (`docs/benchmark.md`) showed something
+that directly contradicts this project's own stated expectation going in:
+B stayed at 16/16, C went _up_ to 9/16 from its 7/16 baseline, F stayed at
+16/16 — paraphrase moved nothing, while the "weaker" structural attacks
+(especially truncation) did real damage to F. Manually inspecting this
+checkpoint's output explains it: `mrm8488/t5-small-finetuned-quora-for-
+paraphrasing` was fine-tuned specifically on Quora question-pairs, and on
+this benchmark's declarative, narrative-style sentences it frequently
+returns the input nearly (sometimes exactly) unchanged rather than a real
+rewrite. That's a property of this one small, deliberately disk-conscious
+checkpoint (picked for its size — see above), not a refutation of the
+published result this whole module cites (Krishna et al., 2023 used a
+full general-purpose paraphraser). Reported honestly rather than tuned
+away or left for the reader to notice — see `docs/benchmark.md` for the
+full reading.

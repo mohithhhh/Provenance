@@ -142,20 +142,21 @@ specifically, not general claims about how AI or human writing works.
 **Reproduce**: `PYTHONPATH=. python scripts/attack_lab_benchmark.py` (from
 `apps/api`, venv active). Same 8 human / 8 gpt2-generated (seed=0) samples
 as Module B's own calibration (`scripts/calibrate_binoculars.py`) — see
-`docs/architecture.md` for why Module A and the paraphrase attack aren't
-in this table.
+`docs/architecture.md` for why Module A isn't in this table, and for the
+paraphrase attack's one-run-no-strength-dial setup.
 
 ### Accuracy under attack (n=16: 8 human, 8 AI)
 
-| Attack   | Strength | B (statistical) | C (classifier) | F (retrieval) |
-| -------- | -------- | --------------- | -------------- | ------------- |
-| _(none)_ | —        | 16/16 (100%)    | 7/16 (44%)     | 16/16 (100%)  |
-| synonym  | 0.3      | 15/16 (94%)     | 7/16 (44%)     | 16/16 (100%)  |
-| synonym  | 0.6      | 14/16 (88%)     | 7/16 (44%)     | 16/16 (100%)  |
-| reorder  | 0.3      | 16/16 (100%)    | 7/16 (44%)     | 16/16 (100%)  |
-| reorder  | 0.6      | 15/16 (94%)     | 7/16 (44%)     | 16/16 (100%)  |
-| truncate | 0.3      | 14/16 (88%)     | 7/16 (44%)     | 16/16 (100%)  |
-| truncate | 0.6      | 14/16 (88%)     | 7/16 (44%)     | 9/16 (56%)    |
+| Attack     | Strength | B (statistical) | C (classifier) | F (retrieval) |
+| ---------- | -------- | --------------- | -------------- | ------------- |
+| _(none)_   | —        | 16/16 (100%)    | 7/16 (44%)     | 16/16 (100%)  |
+| synonym    | 0.3      | 15/16 (94%)     | 7/16 (44%)     | 16/16 (100%)  |
+| synonym    | 0.6      | 14/16 (88%)     | 7/16 (44%)     | 16/16 (100%)  |
+| reorder    | 0.3      | 16/16 (100%)    | 7/16 (44%)     | 16/16 (100%)  |
+| reorder    | 0.6      | 15/16 (94%)     | 7/16 (44%)     | 16/16 (100%)  |
+| truncate   | 0.3      | 14/16 (88%)     | 7/16 (44%)     | 16/16 (100%)  |
+| truncate   | 0.6      | 14/16 (88%)     | 7/16 (44%)     | 9/16 (56%)    |
+| paraphrase | —        | 16/16 (100%)    | 9/16 (56%)     | 16/16 (100%)  |
 
 B and C measure the same thing (still correctly labeled human vs. AI,
 "uncertain" counting as a miss); F measures something different by
@@ -177,7 +178,28 @@ logged from — see `docs/architecture.md`'s Module F section).
 - **F stays at 100% until truncation removes most of the text** (56% at
   truncate/0.6, which keeps only 40% of each sample's words) — exactly the
   paraphrase-survives-because-meaning-survives property Module F exists
-  for, though truncation is a blunter test of it than real paraphrasing
-  would be. Synonym substitution and reordering barely move it at all,
-  since cosine similarity over sentence embeddings is largely insensitive
-  to both.
+  for. Synonym substitution and reordering barely move it at all, since
+  cosine similarity over sentence embeddings is largely insensitive to
+  both, and the real paraphrase attack doesn't move it either (100%) —
+  see below for why that's a weaker result than it looks.
+- **Paraphrase did not turn out to be the most damaging attack here —
+  the opposite of this project's own stated expectation going in**
+  (`docs/limitations.md`, `docs/architecture.md`). B stayed at 100%, C
+  went _up_ to 56% from its 44% baseline, F stayed at 100%. The reason
+  isn't that paraphrasing is weak in general — it's that
+  `mrm8488/t5-small-finetuned-quora-for-paraphrasing` (chosen for its
+  small size, `docs/architecture.md`) makes small, conservative edits
+  rather than a full rewrite, especially on the non-question, narrative-
+  style sentences in this test set (it's fine-tuned specifically on Quora
+  question pairs). Manually inspecting its output confirms this: many
+  paraphrases differ from the original by only a word or two, sometimes
+  not at all. This is a real, measured property of this specific small
+  checkpoint, not evidence that paraphrasing in general fails to threaten
+  these detectors — the published result this project cites (Krishna et
+  al., 2023) used a full-size, general-purpose paraphraser, not a
+  190M-parameter model fine-tuned on question deduplication. C's rise from
+  44% to 56% is plausible rather than mysterious: baseline was already
+  worse than chance on this out-of-domain text (see above), and a
+  conservative rewording nudging a few borderline stylometric features
+  happened to flip a couple of wrong verdicts to right ones — not evidence
+  paraphrasing improves detection.
