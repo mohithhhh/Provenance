@@ -12,3 +12,9 @@ numpy>=2.0.0,<3.0.0
 # lightweight substitute for this one, unlike Module F's embeddings.
 torch>=2.10.0,<3.0.0
 transformers>=5.0.0,<6.0.0
+
+# Module C (trained classifier): logistic regression + standardization over
+# hand-picked stylometric features. No torch/transformers needed here —
+# the feature set is small and simple enough that a classical model is the
+# right, interpretable choice (see docs/architecture.md).
+scikit-learn>=1.5.0,<2.0.0

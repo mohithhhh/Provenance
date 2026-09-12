@@ -120,3 +120,27 @@ export function detectStatistical(text: string): Promise<DetectStatisticalRespon
     body: JSON.stringify({ text }),
   });
 }
+
+export type ClassifyVerdict = 'likely-ai' | 'likely-human' | 'uncertain';
+
+export interface ClassifyFeature {
+  name: string;
+  value: number;
+  contribution: number;
+}
+
+export interface ClassifyResponse {
+  verdict: ClassifyVerdict;
+  aiProbability: number;
+  intervalLow: number;
+  intervalHigh: number;
+  confidenceLevel: number;
+  features: ClassifyFeature[];
+}
+
+export function classifyText(text: string): Promise<ClassifyResponse> {
+  return request<ClassifyResponse>('/classify/text', {
+    method: 'POST',
+    body: JSON.stringify({ text }),
+  });
+}

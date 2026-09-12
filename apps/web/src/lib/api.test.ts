@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
   checkLedger,
+  classifyText,
   detectStatistical,
   ledgerStats,
   listLedgerEntries,
@@ -105,6 +106,28 @@ describe('api client', () => {
     expect(result).toEqual(responseBody);
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(String(url)).toMatch(/\/detect\/statistical$/);
+    expect(JSON.parse(init.body)).toEqual({ text: 'hello world' });
+  });
+
+  it('classifyText posts to /classify/text with the text', async () => {
+    const responseBody = {
+      verdict: 'uncertain',
+      aiProbability: 0.55,
+      intervalLow: 0.1,
+      intervalHigh: 1.0,
+      confidenceLevel: 0.9,
+      features: [{ name: 'type_token_ratio', value: 0.8, contribution: -1.2 }],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(responseBody), { status: 200 }));
+    global.fetch = fetchMock;
+
+    const result = await classifyText('hello world');
+
+    expect(result).toEqual(responseBody);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toMatch(/\/classify\/text$/);
     expect(JSON.parse(init.body)).toEqual({ text: 'hello world' });
   });
 });

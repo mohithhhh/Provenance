@@ -61,7 +61,7 @@ panel, and a commit before the next one starts. See the table in
 - [x] Phase 2 — Module A: robustness + tradeoff analysis (`/watermark/robustness`)
 - [x] Phase 3 — Module F: retrieval provenance ledger (`/ledger`)
 - [x] Phase 4 — Module B: zero-shot statistical detector (`/detect`)
-- [ ] Phase 5 — Module C: trained classifier + calibration
+- [x] Phase 5 — Module C: trained classifier + calibration (`/classify`)
 - [ ] Phase 6 — Module D: file provenance (C2PA)
 - [ ] Phase 7 — Module G: Attack Lab
 - [ ] Phase 8 — Module E: ensemble dashboard

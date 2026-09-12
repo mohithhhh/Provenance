@@ -10,7 +10,7 @@ interface ModuleEntry {
 const MODULES: ModuleEntry[] = [
   { letter: 'A', name: 'Watermarking', status: 'live', href: '/watermark' },
   { letter: 'B', name: 'Zero-shot statistical detector', status: 'live', href: '/detect' },
-  { letter: 'C', name: 'Trained classifier', status: 'planned' },
+  { letter: 'C', name: 'Trained classifier', status: 'live', href: '/classify' },
   { letter: 'D', name: 'File provenance (C2PA)', status: 'planned' },
   { letter: 'E', name: 'Ensemble dashboard', status: 'planned' },
   { letter: 'F', name: 'Retrieval provenance ledger', status: 'live', href: '/ledger' },

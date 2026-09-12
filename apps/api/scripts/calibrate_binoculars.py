@@ -16,7 +16,7 @@ HC3-based evaluation is for. This script exists so the threshold in
 detect.py is *based on something measured*, not a guess, and so it's
 reproducible rather than a one-off finding.
 
-Usage: python scripts/calibrate_binoculars.py (from apps/api, venv active)
+Usage: PYTHONPATH=. python scripts/calibrate_binoculars.py (from apps/api, venv active)
 """
 
 from __future__ import annotations

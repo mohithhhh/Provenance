@@ -7,9 +7,6 @@ evaluation data — no hand-waved or placeholder metrics.
 
 Planned:
 
-- **Module C** (Phase 5): accuracy, precision, recall, F1, ROC-AUC, and
-  confusion matrix on a held-out split of the training dataset (see
-  `docs/dataset.md`); conformal prediction coverage.
 - **Module G / Attack Lab** (Phase 7): per-module accuracy-under-attack
   table across the standard attack suite, modeled on the PADBen
   methodology (Zha et al., 2025) — the project's headline statistic.
@@ -97,3 +94,51 @@ Clean separation on this small calibration set (8 samples each): gap
 illustrative calibration, not a statistically powered benchmark — that's
 what Module C's Phase 5 HC3-based evaluation is for, and Module B's
 numbers should be read with that scale in mind.
+
+## Module C: Trained classifier (Phase 5)
+
+**Reproduce**: from `apps/api` (venv active),
+`PYTHONPATH=. python scripts/prepare_hc3.py` then
+`PYTHONPATH=. python scripts/train_classifier.py`. Data: HC3, 400 rows
+capped per source config, split 60/20/20 (train/calibration/test) by
+question id, seed 0 — see `docs/dataset.md`.
+
+- **Train**: 2,315 examples. **Calibration**: 768. **Test**: 767 (all
+  held out from training and from each other).
+
+### Held-out test-set evaluation
+
+| Metric    | Value |
+| --------- | ----- |
+| Accuracy  | 0.814 |
+| Precision | 0.789 |
+| Recall    | 0.867 |
+| F1        | 0.826 |
+| ROC-AUC   | 0.896 |
+
+Confusion matrix (test, n=767): TN=284, FP=91, FN=52, TP=340.
+
+### Conformal calibration (target 90% coverage, alpha=0.1)
+
+Calibration quantile (half-width added/subtracted around every predicted
+AI-probability): **0.700**. Measured coverage on the held-out test split:
+**91.9%** — meets the 90% target (see `docs/architecture.md` for what this
+guarantee does and doesn't promise). A quantile this wide reflects real
+uncertainty in a ~19-feature stylometric model predicting individual
+answers, not a bug — the interval is honestly wide because the underlying
+prediction is genuinely uncertain that often.
+
+### Top standardized coefficients
+
+| Feature          | Coefficient | Reads toward |
+| ---------------- | ----------- | ------------ |
+| type_token_ratio | −1.786      | human        |
+| func_and         | +0.995      | AI           |
+| func_to          | +0.777      | AI           |
+| period_ratio     | −0.561      | human        |
+| func_a           | +0.412      | AI           |
+
+Lower lexical diversity (type-token ratio) and heavier use of "and"/"to"
+read toward AI in this dataset; more period-heavy (shorter-sentence-like)
+punctuation reads toward human. These are correlations learned from HC3
+specifically, not general claims about how AI or human writing works.

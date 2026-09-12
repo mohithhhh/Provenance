@@ -281,3 +281,65 @@ Module C's Phase 5 job, using the HC3 dataset.
 `split_sentences()` is a regex splitter on `.!?` boundaries, not a real
 sentence tokenizer — it mis-splits on abbreviations ("Dr. Smith"), the
 same category of honest simplification as Module A's toy `tokenize()`.
+
+## Module C: Trained classifier (Phase 5)
+
+Lives in `apps/api` (`app/classifier/features.py`, `app/classifier/model.py`,
+`app/classifier/dataset.py`, `app/routers/classify.py`), UI at
+`apps/web/src/app/classify`. Where Module B is zero-shot (no training,
+just how surprising two off-the-shelf LMs find the text), Module C is a
+small **trained** classifier — logistic regression over stylometric
+features, fit on real labeled data (HC3, see `docs/dataset.md`) with a
+real held-out evaluation.
+
+### Stylometry, not a language model
+
+`features.py` extracts ~19 classic stylometric features (sentence-length
+mean/stdev, average word length, type-token ratio, punctuation ratios,
+contraction rate, and the frequency of 10 common function words) with
+plain `re`/`statistics` — no NLP dependency, and none of Module B's LM
+inference cost. Logistic regression was chosen over a GBM (both were on
+the table) because with a feature set this small and hand-picked,
+interpretability (a signed coefficient per feature) matters more than the
+marginal accuracy a GBM might add, and the feature-importance view in the
+UI depends on that interpretability directly.
+
+### Calibration: split conformal prediction, not a bare percentage
+
+Rather than reporting `predict_proba()`'s output as-is — a classic
+over-confident-black-box move — `model.py` wraps it in **split conformal
+prediction** (Vovk, Gammerman, Shafer, _"Algorithmic Learning in a Random
+World"_, 2005): a third, held-out calibration split (never used for
+training or evaluation) produces nonconformity scores (`|y - p_hat|`),
+and the `ceil((n+1)(1-alpha))/n` empirical quantile of those scores becomes
+a fixed half-width added/subtracted around every future prediction. This
+gives the interval a **marginal coverage guarantee** — over many
+predictions, the true label falls inside the reported interval at least
+`(1-alpha)` of the time, assuming the calibration and future data are
+exchangeable — instead of an uncalibrated single number. See
+`docs/limitations.md` for what "marginal" and "exchangeable" don't
+promise (not per-example, and can drift on text far outside HC3's
+distribution).
+
+### Measured, not guessed
+
+`scripts/train_classifier.py` (reproducible, committed) trains on real
+HC3 data and prints real numbers — held-out accuracy/precision/recall/F1/
+ROC-AUC/confusion matrix, the calibration quantile, and the **measured**
+test-set coverage (not just the theoretical target) — see
+`docs/benchmark.md` for the actual run. The trained artifact
+(`app/classifier/artifact/model.json`) is a small, human-readable JSON of
+the standardization + logistic-regression parameters, not a pickle — no
+arbitrary-code-execution surface from loading it, and it's committed
+directly (the dataset it's trained from is not — see `docs/dataset.md`).
+
+### What Phase 5 does not cover
+
+Feature importance shown in the UI is the model's own (global,
+standardized) coefficients times each request's own (scaled) feature
+values — a real, direct decomposition of the logit, not a separate
+post-hoc explainability method (e.g. SHAP). This shares Module B's base-
+model-adjacent blind spot: a classifier trained on stylometric surface
+features is expected to degrade against text specifically optimized to
+evade stylometric detection (Module G's job, Phase 7) — see
+`docs/limitations.md`.
