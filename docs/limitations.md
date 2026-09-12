@@ -36,6 +36,29 @@ and apply regardless of phase.
   `docs/architecture.md`) didn't break the method, but the risk is real
   and inherent to any perplexity-based approach, not specific to this
   implementation.
+- **Module C (trained classifier) learned correlations specific to HC3's
+  human vs. ChatGPT answers, not general markers of "AI writing."** Its
+  stylometric features (lexical diversity, function-word frequency,
+  punctuation habits) reflect how HC3's particular human respondents and
+  ChatGPT (as of the snapshot HC3 was collected from) happen to differ —
+  not a universal signature of machine generation. A different AI system,
+  writing style, or domain than HC3's five source topics (finance,
+  medicine, open QA, Reddit ELI5, Wikipedia CS/AI) can look different to
+  this model in either direction. Its conformal prediction interval
+  (`docs/architecture.md`) has a **marginal** coverage guarantee — true on
+  average across many predictions under an exchangeability assumption
+  between the calibration data and whatever text is scored — not a
+  per-example guarantee, and that assumption is weaker the further a given
+  input is from HC3's own distribution.
+- **Module D (file provenance) only covers images (JPEG/PNG/WEBP), not
+  PDFs**, despite the original phase plan mentioning both — C2PA embeds
+  manifests differently in PDFs, and EXIF doesn't apply to PDFs at all,
+  so supporting them was cut from Phase 6's scope (see
+  `docs/architecture.md`). It also only verifies a manifest if one is
+  present: the overwhelming majority of images on the internet have no
+  C2PA data at all, and a `no-manifest` result says nothing about whether
+  such an image is AI-generated — this module is not a fallback detector
+  for unsigned content, unlike Modules B/C/F.
 - **The Attack Lab (Module G) demonstrates robustness under the attacks it
   implements** (paraphrase, synonym substitution, reordering, truncation).
   It is not proof of robustness against attacks outside that set, nor

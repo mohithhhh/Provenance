@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
   checkLedger,
+  checkProvenance,
+  classifyText,
   detectStatistical,
   ledgerStats,
   listLedgerEntries,
@@ -106,5 +108,56 @@ describe('api client', () => {
     const [url, init] = fetchMock.mock.calls[0]!;
     expect(String(url)).toMatch(/\/detect\/statistical$/);
     expect(JSON.parse(init.body)).toEqual({ text: 'hello world' });
+  });
+
+  it('classifyText posts to /classify/text with the text', async () => {
+    const responseBody = {
+      verdict: 'uncertain',
+      aiProbability: 0.55,
+      intervalLow: 0.1,
+      intervalHigh: 1.0,
+      confidenceLevel: 0.9,
+      features: [{ name: 'type_token_ratio', value: 0.8, contribution: -1.2 }],
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(responseBody), { status: 200 }));
+    global.fetch = fetchMock;
+
+    const result = await classifyText('hello world');
+
+    expect(result).toEqual(responseBody);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toMatch(/\/classify\/text$/);
+    expect(JSON.parse(init.body)).toEqual({ text: 'hello world' });
+  });
+
+  it('checkProvenance uploads the file as multipart form data, not JSON', async () => {
+    const responseBody = {
+      c2pa: {
+        status: 'valid',
+        title: 'C.jpg',
+        claimGenerator: 'c2pa-rs/0.33.1',
+        signatureIssuer: 'C2PA Test Signing Cert',
+        signedAt: '2024-08-06T21:53:37+00:00',
+        failures: [],
+      },
+      exif: { Make: 'TestMake' },
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify(responseBody), { status: 200 }));
+    global.fetch = fetchMock;
+
+    const file = new File([new Uint8Array([1, 2, 3])], 'C.jpg', { type: 'image/jpeg' });
+    const result = await checkProvenance(file);
+
+    expect(result).toEqual(responseBody);
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toMatch(/\/provenance\/file$/);
+    expect(init.body).toBeInstanceOf(FormData);
+    expect(init.body.get('file')).toBe(file);
+    // No forced JSON Content-Type — the browser sets the multipart boundary.
+    expect(init.headers).toBeUndefined();
   });
 });

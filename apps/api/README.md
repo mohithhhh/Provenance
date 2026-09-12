@@ -68,3 +68,39 @@ HF_HUB_OFFLINE=1 uvicorn app.main:app --reload
 
 `scripts/calibrate_binoculars.py` reproduces Module B's threshold
 calibration — see `docs/architecture.md` and `docs/benchmark.md`.
+
+**All scripts under `scripts/` import from `app.*`, so run them with
+`PYTHONPATH=.` from `apps/api`** (pytest is configured with its own
+`pythonpath`, so this only matters for direct `python scripts/...` runs).
+
+## Module C (trained classifier) notes
+
+Trains a logistic regression over hand-picked stylometric features
+(`app/classifier/features.py`) on [HC3](https://huggingface.co/datasets/Hello-SimpleAI/HC3)
+(CC-BY-SA 4.0 — see `docs/dataset.md`), wrapped in split conformal
+prediction so `/classify/text` returns a coverage-guaranteed interval
+around its AI-probability estimate instead of a bare percentage.
+
+```bash
+PYTHONPATH=. python scripts/prepare_hc3.py       # downloads + splits HC3 into apps/api/data/classifier/
+PYTHONPATH=. python scripts/train_classifier.py  # trains + evaluates + writes app/classifier/artifact/model.json
+```
+
+The trained artifact (`app/classifier/artifact/model.json`) **is** committed
+— unlike the dataset CSVs it's trained from, it's a small, human-readable
+set of learned parameters, not a copy of third-party data, and the API
+needs it at runtime without retraining on every deploy. Re-run both scripts
+and commit the new artifact if `features.py` or the training data changes.
+
+## Module D (file provenance) notes
+
+Verifies [C2PA](https://c2pa.org/) Content Credentials manifests (via the
+official `c2pa-python` SDK — real cryptographic verification, not a
+reimplementation) and surfaces EXIF metadata (via Pillow) for uploaded
+images. Images only (JPEG/PNG/WEBP, ≤20MB) — see `docs/architecture.md` and
+`docs/limitations.md` for why PDFs aren't supported.
+
+`tests/fixtures/c2pa/{C,CA}.jpg` are real, validly-signed test images from
+the [c2pa-rs](https://github.com/contentauth/c2pa-rs) project (Apache-2.0)
+— see `tests/fixtures/c2pa/README.md`. No setup script needed; unlike
+Modules B/C/F this module needs no downloaded model weights or dataset.
