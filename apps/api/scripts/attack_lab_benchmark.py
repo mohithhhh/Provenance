@@ -15,10 +15,11 @@ arbitrary text with no setup step. Module A (watermarking) already has its
 own real robustness benchmark using its own native structural attacks
 (Phase 2, docs/benchmark.md) — re-running it here would need a second,
 JS-based attack implementation for no new information, so it isn't
-duplicated. The paraphrase attack isn't included either: it needs a ~240MB
-model this project's own dev machine doesn't currently have room for (see
-docs/limitations.md) — every number below is from a real run, and this
-script doesn't fabricate a paraphrase row it can't actually measure.
+duplicated. The paraphrase attack runs once, separately from the strength
+sweep below — this implementation's `paraphrase()` has no strength knob
+(a T5 model rewrites once; it doesn't have a natural 0..1 dial the way a
+structural attack's "how much of the text to touch" does), so running it
+at multiple nominal strengths would just repeat the same real generation.
 
 Usage: PYTHONPATH=. python scripts/attack_lab_benchmark.py (from apps/api, venv active)
 """
@@ -31,6 +32,7 @@ from pathlib import Path
 import torch
 
 from app.attacks.attacks import apply_attack
+from app.attacks.paraphrase import paraphrase as paraphrase_attack
 from app.classifier.model import load_artifact, predict_from_artifact, verdict_from_probability
 from app.detectors.models import get_performer_model, get_tokenizer
 from app.detectors.perplexity import analyze_text, verdict_from_binoculars_score
@@ -179,6 +181,21 @@ def main() -> None:
                 f"{c_hits}/{n} ({c_hits / n:.0%}){'':>2} "
                 f"{f_hits}/{n} ({f_hits / n:.0%})"
             )
+
+    # Paraphrase: one real run, no strength dial (see module docstring).
+    attacked_texts = [paraphrase_attack(s) for s in samples]
+    b_hits = sum(b_correct(t, label) for t, label in zip(attacked_texts, labels, strict=True))
+    c_hits = sum(c_correct(t, label) for t, label in zip(attacked_texts, labels, strict=True))
+    f_hits = sum(
+        f_correct(ledger, t, expected_id)
+        for t, expected_id in zip(attacked_texts, ids, strict=True)
+    )
+    print(
+        f"{'paraphrase':<10} {'—':>8} "
+        f"{b_hits}/{n} ({b_hits / n:.0%}){'':>3} "
+        f"{c_hits}/{n} ({c_hits / n:.0%}){'':>2} "
+        f"{f_hits}/{n} ({f_hits / n:.0%})"
+    )
 
 
 if __name__ == "__main__":

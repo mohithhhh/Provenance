@@ -5,8 +5,10 @@ analogs of real editing, in the same spirit as Module A's own robustness
 attacks (`packages/watermark-core/src/attacks.ts`), but operating on
 arbitrary real text rather than the watermark demo's toy vocabulary. The
 fourth, real paraphrasing (an actual model rewriting meaning), is
-`paraphrase.py` — expected to be considerably more damaging to every other
-module than anything here; see docs/limitations.md.
+`paraphrase.py` — paraphrasing in general is expected to be the most
+damaging attack to a detector, but measured here the specific small model
+used turned out to be the *least* damaging of the four; see
+docs/limitations.md and docs/benchmark.md for the honest reading of why.
 """
 
 from __future__ import annotations

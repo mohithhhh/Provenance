@@ -1,10 +1,9 @@
 """HTTP-level tests for POST /attacks/apply. The paraphrase attack's
-"unavailable" path is monkeypatched rather than exercised for real — this
-dev environment can't reliably provide the ~240MB/network the real T5
-model needs (see docs/limitations.md), so a real attempt here would be
-slow and environment-dependent rather than a fast, deterministic test of
-the actual thing worth proving: that ParaphraserUnavailable turns into a
-clean 503, not a raw exception or a hang."""
+*unavailable* path is still monkeypatched — proving 503-on-failure doesn't
+need the model itself to be absent, and shouldn't depend on whether it
+happens to be cached on whatever machine runs this suite. Its *happy* path
+is exercised for real in test_paraphrase_attack_works_end_to_end, same
+reasoning as Module B's tests: no fake would test anything meaningful."""
 
 from __future__ import annotations
 
@@ -60,3 +59,16 @@ def test_paraphrase_unavailable_returns_a_clean_503(monkeypatch: pytest.MonkeyPa
     )
     assert response.status_code == 503
     assert "not cached" in response.json()["detail"]
+
+
+def test_paraphrase_attack_works_end_to_end() -> None:
+    response = client.post(
+        "/attacks/apply",
+        json={
+            "text": "What is the best way to learn a new programming language?",
+            "attack": "paraphrase",
+            "strength": 0.5,
+        },
+    )
+    assert response.status_code == 200
+    assert response.json()["attackedText"].strip() != ""

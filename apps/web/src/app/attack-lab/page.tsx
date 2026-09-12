@@ -149,8 +149,9 @@ export default function AttackLabPage() {
           Module G. Apply one attack to a piece of text, then run it through Modules A, B, C, and F
           simultaneously to see which survive and which collapse — proof instead of a marketing
           claim. Synonym substitution, sentence reordering, and truncation are simple structural
-          perturbations; paraphrase uses a real local T5 model and is expected to be considerably
-          more damaging to every module here than the other three. See{' '}
+          perturbations; paraphrase uses a real local T5 model — measured here as the <em>least</em>{' '}
+          damaging of the four, a property of this specific small, disk-conscious checkpoint rather
+          than a refutation of the published result it&apos;s based on. See{' '}
           <a
             href="https://github.com/mohithhhh/Provenance/blob/main/docs/limitations.md"
             className="underline underline-offset-2"

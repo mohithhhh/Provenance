@@ -109,11 +109,12 @@ Modules B/C/F this module needs no downloaded model weights or dataset.
 
 Three structural attacks (synonym substitution, sentence reordering,
 truncation — `app/attacks/attacks.py`) need nothing extra. The fourth,
-real paraphrasing (`app/attacks/paraphrase.py`), needs a ~240MB T5 model
+real paraphrasing (`app/attacks/paraphrase.py`), needs a ~440MB T5 model
 (`mrm8488/t5-small-finetuned-quora-for-paraphrasing`) downloaded on first
 use, same lazy-load pattern as Modules B/F — if it can't load (no network,
 or not enough disk), `/attacks/apply` returns a 503 with a clear message
-rather than hanging or crashing.
+rather than hanging or crashing. Also needs `sentencepiece` (its
+tokenizer's format) — already in `requirements.txt`.
 
 ```bash
 PYTHONPATH=. python scripts/attack_lab_benchmark.py  # per-module accuracy-under-attack table
