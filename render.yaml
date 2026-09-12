@@ -1,0 +1,23 @@
+# Render Blueprint for apps/api. Deploy: Render dashboard → New → Blueprint
+# → connect this repo → Render finds this file automatically. See
+# docs/deploy.md for the full walkthrough (including the frontend half,
+# which Render doesn't handle — that's Cloudflare Pages).
+services:
+  - type: web
+    name: provenance-api
+    runtime: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    dockerContext: ./apps/api
+    # Overrides the Dockerfile's dev CMD (--reload, requirements-dev.txt) —
+    # Render assigns the port via $PORT, not the Dockerfile's hardcoded 8000.
+    dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    plan: starter
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: '1'
+      # Set once the Cloudflare Pages URL is known (see docs/deploy.md) —
+      # left unset here so Render prompts for it rather than deploying with
+      # a guessed value.
+      - key: ALLOWED_ORIGINS
+        sync: false

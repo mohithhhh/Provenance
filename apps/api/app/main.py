@@ -2,10 +2,13 @@
 
 Phase 3 added Module F (retrieval provenance ledger); Phase 4 added Module B
 (zero-shot statistical detector); Phase 5 added Module C (trained
-classifier); Phase 6 added Module D (file provenance / C2PA); Phase 7 adds
-Module G (Attack Lab). See the project README and docs/ for the phased
-build plan.
+classifier); Phase 6 added Module D (file provenance / C2PA); Phase 7 added
+Module G (Attack Lab). Module E (Phase 8) and batch mode (Phase 9) are pure
+frontend orchestration over these same endpoints — no new routes here. See
+the project README and docs/ for the phased build plan.
 """
+
+import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,11 +30,12 @@ app = FastAPI(
     version="0.0.0",
 )
 
-# Permissive CORS for local development. Tighten to the deployed web
-# origin before shipping past Phase 0.
+# Permissive by default for local dev; set ALLOWED_ORIGINS (comma-separated)
+# in production to the real deployed frontend origin(s) — see docs/deploy.md.
+_allowed_origins = os.environ.get("ALLOWED_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=_allowed_origins,
     allow_methods=["*"],
     allow_headers=["*"],
 )
