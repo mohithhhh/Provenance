@@ -13,11 +13,9 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
-from ..classifier.model import load_artifact, predict_from_artifact
+from ..classifier.model import load_artifact, predict_from_artifact, verdict_from_probability
 
 router = APIRouter(prefix="/classify", tags=["classify"])
-
-UNCERTAIN_BAND = 0.5  # verdict is "uncertain" whenever the interval straddles this
 
 
 class ClassifyRequest(BaseModel):
@@ -39,14 +37,6 @@ class ClassifyResponse(BaseModel):
     features: list[FeatureContribution]
 
 
-def _verdict(low: float, high: float) -> str:
-    if low > UNCERTAIN_BAND:
-        return "likely-ai"
-    if high < UNCERTAIN_BAND:
-        return "likely-human"
-    return "uncertain"
-
-
 @router.post("/text", response_model=ClassifyResponse)
 def classify_text(payload: ClassifyRequest) -> ClassifyResponse:
     try:
@@ -60,7 +50,7 @@ def classify_text(payload: ClassifyRequest) -> ClassifyResponse:
     prediction = predict_from_artifact(artifact, payload.text)
 
     return ClassifyResponse(
-        verdict=_verdict(prediction.interval_low, prediction.interval_high),
+        verdict=verdict_from_probability(prediction.ai_probability),
         aiProbability=round(prediction.ai_probability, 4),
         intervalLow=round(prediction.interval_low, 4),
         intervalHigh=round(prediction.interval_high, 4),

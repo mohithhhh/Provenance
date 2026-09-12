@@ -11,7 +11,13 @@ from __future__ import annotations
 
 import pytest
 
-from app.detectors.perplexity import analyze_sentences, analyze_text, burstiness, split_sentences
+from app.detectors.perplexity import (
+    _safe_exp,
+    analyze_sentences,
+    analyze_text,
+    burstiness,
+    split_sentences,
+)
 
 HUMAN_SAMPLE = (
     "The hiking trail near our cabin was closed last week because of a "
@@ -105,3 +111,22 @@ def test_analyze_sentences_marks_too_short_sentences_unscored() -> None:
     results = analyze_sentences(text)
     assert results[0].scored is False
     assert results[1].scored is True
+
+
+class TestSafeExp:
+    # Regression tests for a real crash: math.exp raises OverflowError past
+    # ~709 rather than returning inf, which analyze_text hit on
+    # sufficiently bizarre input (see test_perplexity_concurrency.py and
+    # docs/architecture.md's Module G section for how this was found).
+    def test_ordinary_values_match_math_exp(self) -> None:
+        import math
+
+        assert _safe_exp(10.0) == pytest.approx(math.exp(10.0))
+
+    def test_values_too_large_for_math_exp_return_inf(self) -> None:
+        import math
+
+        assert _safe_exp(10_000.0) == math.inf
+
+    def test_very_negative_values_return_zero(self) -> None:
+        assert _safe_exp(-10_000.0) == 0.0

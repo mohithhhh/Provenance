@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   ApiError,
+  applyAttack,
   checkLedger,
   checkProvenance,
   classifyText,
@@ -159,5 +160,38 @@ describe('api client', () => {
     expect(init.body.get('file')).toBe(file);
     // No forced JSON Content-Type — the browser sets the multipart boundary.
     expect(init.headers).toBeUndefined();
+  });
+
+  it('applyAttack posts text, attack, strength, and seed', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(JSON.stringify({ attackedText: 'attacked' }), { status: 200 }),
+      );
+    global.fetch = fetchMock;
+
+    const result = await applyAttack('hello world', 'truncate', 0.5, 3);
+
+    expect(result).toEqual({ attackedText: 'attacked' });
+    const [url, init] = fetchMock.mock.calls[0]!;
+    expect(String(url)).toMatch(/\/attacks\/apply$/);
+    expect(JSON.parse(init.body)).toEqual({
+      text: 'hello world',
+      attack: 'truncate',
+      strength: 0.5,
+      seed: 3,
+    });
+  });
+
+  it('applyAttack defaults seed to 0', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(new Response(JSON.stringify({ attackedText: 'x' }), { status: 200 }));
+    global.fetch = fetchMock;
+
+    await applyAttack('hello', 'reorder', 1.0);
+
+    const [, init] = fetchMock.mock.calls[0]!;
+    expect(JSON.parse(init.body).seed).toBe(0);
   });
 });

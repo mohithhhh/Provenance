@@ -63,6 +63,23 @@ and apply regardless of phase.
   implements** (paraphrase, synonym substitution, reordering, truncation).
   It is not proof of robustness against attacks outside that set, nor
   against an adaptive attacker who has access to this suite's own source.
+  The paraphrase attack specifically needs a ~240MB local model
+  (`mrm8488/t5-small-finetuned-quora-for-paraphrasing`) that this project's
+  own dev machine did not have disk space for while building this phase —
+  it's fully implemented and reports a clear "unavailable" state rather
+  than failing silently, but wasn't run for real here; see
+  `docs/architecture.md`.
+- **Module C does not generalize past HC3's training distribution.**
+  Module G's benchmark script (`scripts/attack_lab_benchmark.py`) found
+  Module C scoring 7/16 (44% — worse than chance) on a set of short
+  personal-narrative human sentences and raw gpt2 autocomplete
+  continuations, **before any attack was applied at all**. This isn't an
+  attack-robustness finding — it's a domain-generalization gap: Module C's
+  stylometric features learned real signal specific to HC3's long-form
+  Q&A register and ChatGPT's specific style, and that signal does not
+  transfer to a different genre or a different generator. Module C's own
+  measured 81.4% accuracy (`docs/benchmark.md`) describes its performance
+  on HC3-distributed text specifically, not general AI-text detection.
 
 ## The base-model blind spot
 

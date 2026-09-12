@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import math
 import re
+import threading
 from dataclasses import dataclass
 
 import torch
@@ -39,6 +40,51 @@ from .models import get_observer_model, get_performer_model, get_tokenizer
 _RANK_BUCKETS: list[tuple[int, str]] = [(10, "top10"), (100, "top100"), (1000, "top1000")]
 
 MIN_TOKENS = 2
+
+# A real concurrency bug, found while building Module G's Attack Lab (which
+# calls /detect/statistical on the original and attacked text at the same
+# time): FastAPI runs sync route handlers in a thread pool, so two requests
+# can invoke the shared gpt2/distilgpt2 model singletons concurrently.
+# PyTorch modules aren't guaranteed thread-safe for concurrent forward()
+# calls on the same instance — without this lock, concurrent calls on
+# identical input silently returned an identical, garbled result instead
+# of each computing their own correct one, occasionally extreme enough to
+# overflow math.exp() outright. A single small model pair on a laptop CPU
+# has no real throughput to lose by serializing this — the same deliberate
+# demo-scale simplification as Module F's brute-force cosine search.
+_MODEL_LOCK = threading.Lock()
+
+# Empirically calibrated on this project's own gpt2/distilgpt2 pair — see
+# scripts/calibrate_binoculars.py and docs/architecture.md for the
+# calibration data (8 human / 8 AI samples: AI scores 0.09-0.23, human
+# scores 0.29-0.73). Not the original Binoculars paper's 0.9015 threshold
+# (that's calibrated for a much larger model pair and doesn't transfer).
+AI_THRESHOLD = 0.24
+HUMAN_THRESHOLD = 0.28
+
+
+def verdict_from_binoculars_score(score: float) -> str:
+    """Shared by the /detect router and Module G's attack-lab benchmark
+    script, so both use the exact same threshold logic rather than a
+    second copy that could drift out of sync."""
+    if score < AI_THRESHOLD:
+        return "likely-ai"
+    if score > HUMAN_THRESHOLD:
+        return "likely-human"
+    return "uncertain"
+
+
+def _safe_exp(x: float) -> float:
+    """`math.exp` raises OverflowError past ~709 rather than returning
+    `inf` — a real crash this project hit on sufficiently bizarre input
+    (Module A's toy-grammar output scored by Module B, via Module G's
+    Attack Lab). Infinite perplexity is a legitimate, meaningful value
+    ("this text is unboundedly surprising to the model"), so return it
+    instead of crashing the request."""
+    try:
+        return math.exp(x)
+    except OverflowError:
+        return math.inf
 
 
 def _bucket_for_rank(rank: int) -> str:
@@ -74,16 +120,15 @@ def analyze_text(text: str) -> TextStats:
     tokenizer = get_tokenizer()
     input_ids = torch.tensor([tokenizer.encode(text)])
     if input_ids.shape[1] < MIN_TOKENS + 1:
-        raise ValueError(
-            f"Text is too short to score (needs at least {MIN_TOKENS + 1} tokens)."
-        )
+        raise ValueError(f"Text is too short to score (needs at least {MIN_TOKENS + 1} tokens).")
 
-    performer = get_performer_model()
-    observer = get_observer_model()
+    with _MODEL_LOCK:
+        performer = get_performer_model()
+        observer = get_observer_model()
 
-    with torch.no_grad():
-        performer_logits = performer(input_ids).logits[0]  # (seq_len, vocab)
-        observer_logits = observer(input_ids).logits[0]
+        with torch.no_grad():
+            performer_logits = performer(input_ids).logits[0]  # (seq_len, vocab)
+            observer_logits = observer(input_ids).logits[0]
 
     # logits[i] predicts token i+1; the final position predicts nothing we
     # have ground truth for, so it's dropped.
@@ -109,13 +154,13 @@ def analyze_text(text: str) -> TextStats:
         for tok, rank, surprisal in zip(token_strs, ranks, surprisals, strict=True)
     ]
 
-    perplexity = math.exp(sum(surprisals) / len(surprisals))
+    perplexity = _safe_exp(sum(surprisals) / len(surprisals))
 
     # Cross-entropy between the performer's and observer's predictive
     # distributions at each position, both conditioned on the same real
     # prefix — the core Binoculars-style cross-perplexity term.
     cross_entropies = -(performer_probs * observer_log_probs).sum(dim=-1)
-    cross_perplexity = math.exp(cross_entropies.mean().item())
+    cross_perplexity = _safe_exp(cross_entropies.mean().item())
 
     binoculars_score = perplexity / cross_perplexity
     top10_fraction = sum(1 for t in token_stats if t.bucket == "top10") / len(token_stats)

@@ -90,6 +90,30 @@ def predict_from_artifact(artifact: ClassifierArtifact, text: str) -> Prediction
     )
 
 
+# How far from 0.5 the point probability must sit before the verdict
+# commits to a side — a band around the raw estimate, not the conformal
+# interval. An earlier version of this function based the verdict on
+# whether the *interval* excluded 0.5, which sounds more rigorous but was
+# actually broken in practice: at this classifier's measured quantile
+# (~0.70, docs/benchmark.md), interval_low = p - 0.70 and interval_high =
+# p + 0.70 straddle 0.5 for every p in [0, 1], so that version could never
+# return anything but "uncertain", for any input at all — see
+# docs/architecture.md and the regression tests in test_classifier_model.py.
+UNCERTAIN_MARGIN = 0.1
+
+
+def verdict_from_probability(probability: float) -> str:
+    """Shared by the /classify router and Module G's attack-lab benchmark
+    script. The conformal interval is still computed and reported
+    (Prediction.interval_low/high) as an honest, calibrated confidence
+    range — it just isn't what decides this verdict."""
+    if probability > 0.5 + UNCERTAIN_MARGIN:
+        return "likely-ai"
+    if probability < 0.5 - UNCERTAIN_MARGIN:
+        return "likely-human"
+    return "uncertain"
+
+
 def conformal_quantile(residuals: Sequence[float], alpha: float) -> float:
     """The split-conformal quantile of calibration nonconformity scores
     (here, `|y - p_hat|` on held-out calibration examples): the finite-

@@ -92,7 +92,7 @@ for just the backend). Compose bind-mounts source into the containers.
 - Prefer a real, maintained library over reimplementing a spec from scratch
   when correctness/security matters (Module D's C2PA verification uses the
   official `c2pa-python` SDK) — contrast with Module A, where reimplementing
-  the watermarking papers directly *is* the point.
+  the watermarking papers directly _is_ the point.
 
 ## Frontend architecture (`apps/web`)
 
@@ -133,7 +133,7 @@ before changing the statistics or the text generator.
 ## Cross-cutting conventions worth knowing before editing
 
 - **Numbers in this project are measured, not guessed** — calibration
-  thresholds (`AI_THRESHOLD`/`HUMAN_THRESHOLD` in `app/routers/detect.py`,
+  thresholds (`AI_THRESHOLD`/`HUMAN_THRESHOLD` in `app/detectors/perplexity.py`,
   `DEFAULT_SIMILARITY_THRESHOLD` in `app/ledger.py`) come from committed,
   reproducible scripts (`scripts/calibrate_binoculars.py`,
   `packages/watermark-core/scripts/robustness-benchmark.mjs`). If you change
@@ -146,3 +146,23 @@ before changing the statistics or the text generator.
 - No copyrighted or scraped text is used as training/demo data anywhere;
   any third-party dataset must be documented (license + source) in
   `docs/dataset.md` and fetched by a setup script, never committed.
+- **A verdict/threshold function needs its own test asserting every band is
+  actually reachable**, not just that it returns one of the valid strings.
+  Module C shipped with a verdict function that could mathematically never
+  return anything but "uncertain" (docs/architecture.md's Phase 7 addendum)
+  because no test tried a clearly-AI-like or clearly-human-like input —
+  every test just checked the return value was one of the three valid
+  strings, which passed regardless.
+- A model-backed attack/detector that might not be downloadable (disk,
+  network) should fail with a specific, caught exception type
+  (`ParaphraserUnavailable` in `app/attacks/paraphrase.py`) that the router
+  turns into a clean 503 — not let a raw `OSError` reach the client, and
+  not silently hang retrying.
+- **A shared lazily-loaded model singleton (`@lru_cache` in `app/detectors/
+models.py`, `app/embeddings.py`) is not automatically safe to call
+  concurrently.** FastAPI runs sync route handlers in a thread pool, and
+  concurrent forward passes on the same PyTorch model instance can
+  silently return wrong results, not just crash — see `_MODEL_LOCK` in
+  `app/detectors/perplexity.py` and its Phase 7 addendum in
+  `docs/architecture.md`. Any new endpoint that might be called
+  concurrently on the same model needs the same kind of lock.

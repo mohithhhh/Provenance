@@ -254,7 +254,7 @@ machine-generated text," no licensing question at all:
 | Human (original)    | 0.294 | 0.725 |
 
 Clean separation, gap `[0.225, 0.294]`. `AI_THRESHOLD = 0.24`,
-`HUMAN_THRESHOLD = 0.28` in `app/routers/detect.py`, leaving a narrow
+`HUMAN_THRESHOLD = 0.28` in `app/detectors/perplexity.py`, leaving a narrow
 "uncertain" band between them. This is a small, illustrative calibration
 set (16 samples) — not a statistically powered benchmark. That rigor is
 Module C's Phase 5 job, using the HC3 dataset.
@@ -281,6 +281,33 @@ Module C's Phase 5 job, using the HC3 dataset.
 `split_sentences()` is a regex splitter on `.!?` boundaries, not a real
 sentence tokenizer — it mis-splits on abbreviations ("Dr. Smith"), the
 same category of honest simplification as Module A's toy `tokenize()`.
+
+### Addendum (Phase 7): a real concurrency bug, found by the Attack Lab
+
+Module G's Attack Lab calls `/detect/statistical` on the original and
+attacked text **concurrently** (`Promise.all` on the frontend). FastAPI
+runs sync route handlers in a thread pool, so two requests could invoke
+the shared, lazily-loaded gpt2/distilgpt2 singletons (`app/detectors/
+models.py`) at the same time — and PyTorch modules aren't guaranteed
+thread-safe for concurrent `forward()` calls on the same instance.
+Reproduced directly: 8 concurrent calls on identical input returned an
+identical, garbled perplexity (~50257 — suspiciously exactly gpt2's vocab
+size) instead of each computing the correct value independently,
+occasionally extreme enough to overflow `math.exp()` outright and crash
+the request. Not a rare edge case — reproduced reliably every time it was
+tried, with no lock.
+
+Fixed with a single lock (`_MODEL_LOCK` in `perplexity.py`) serializing
+the two model forward passes — a small model pair on a laptop CPU has no
+real throughput to lose from this, the same reasoning as Module F's
+brute-force cosine search. `_safe_exp()` was added alongside it as
+defense in depth: `math.exp` raises `OverflowError` past ~709 rather than
+returning `inf`, and infinite perplexity is a legitimate, meaningful value
+("unboundedly surprising to this model"), not something worth crashing
+the request over. See `tests/test_perplexity_concurrency.py` (a
+best-effort, timing-dependent regression test — it reliably reproduced
+the bug during development, but a race isn't guaranteed to reproduce on
+every machine) and `tests/test_perplexity.py::TestSafeExp`.
 
 ## Module C: Trained classifier (Phase 5)
 
@@ -344,6 +371,25 @@ features is expected to degrade against text specifically optimized to
 evade stylometric detection (Module G's job, Phase 7) — see
 `docs/limitations.md`.
 
+### Addendum (Phase 7): a real bug in the original verdict logic
+
+Building Module G's benchmark script surfaced a bug in Phase 5's shipped
+`/classify` verdict: it originally decided "likely-ai"/"likely-human" by
+checking whether the **conformal interval** excluded 0.5. That sounds more
+rigorous than a plain threshold, but at this classifier's measured
+quantile (~0.70 — see `docs/benchmark.md`), `interval_low = p - 0.70` and
+`interval_high = p + 0.70` straddle 0.5 for **every** probability `p` in
+`[0, 1]` — so that logic could never return anything but `"uncertain"`,
+for any input at all, attacked or not. No test had ever asserted a
+confident verdict was reachable, so it shipped unnoticed. Fixed in
+`verdict_from_probability()` (`app/classifier/model.py`): the verdict now
+comes from the point probability estimate directly (a small ±0.1 band
+around 0.5 counts as uncertain), and the conformal interval is still
+computed and returned — honestly, as a calibrated confidence range — it
+just no longer doubles as the classification rule. See
+`tests/test_classifier_model.py::TestVerdictFromProbability` for the
+regression tests.
+
 ## Module D: File provenance / C2PA (Phase 6)
 
 Lives in `apps/api` (`app/provenance/c2pa.py`, `app/provenance/exif.py`,
@@ -384,7 +430,7 @@ states:
 **A real, surprising subtlety found while building this**: even a
 pristine, validly-signed test image reports a `signingCredential.untrusted`
 entry in `validation_results`, because the sample fixtures (see
-`tests/fixtures/c2pa/README.md`) are signed with C2PA's own *test* signing
+`tests/fixtures/c2pa/README.md`) are signed with C2PA's own _test_ signing
 certificate, which isn't in the SDK's default trust store — yet
 `validation_state` still comes back `"Valid"`, because that state tracks
 hash/timestamp integrity, not real-world CA trust. `C2paResult.failures`
@@ -409,3 +455,73 @@ apply to PDFs at all; supporting them would roughly double this phase's
 scope for a demo that already has three working image-based modules. A
 deliberate, documented scope cut, not an oversight — see
 `docs/limitations.md`.
+
+## Module G: Attack Lab (Phase 7)
+
+Lives in `apps/api` (`app/attacks/attacks.py`, `app/attacks/paraphrase.py`,
+`app/routers/attacks.py`), UI at `apps/web/src/app/attack-lab`. The
+headline feature: apply one attack to a piece of text, then run it through
+Modules A, B, C, and F simultaneously and show the before/after — proof
+instead of a marketing claim, and the whole reason Module F exists in this
+suite at all (see its own section above).
+
+### Four attacks, three structural + one real
+
+`attacks.py` implements three deliberately simple, structural
+perturbations — **synonym substitution** (a small, hand-picked ~50-word
+dictionary; not real WordNet-scale coverage, the same honest-simplification
+spirit as Module A's toy grammar), **sentence reordering** (a partial
+Fisher-Yates shuffle over a `strength` fraction of sentences, mirroring
+`reorderAttack` in `packages/watermark-core/src/attacks.ts`), and
+**truncation** (keep the first `(1 - strength)` fraction of words). The
+fourth, **paraphrase** (`paraphrase.py`), is real: an actual small T5 model
+rewriting meaning, not a word/sentence shuffle — and expected to be
+considerably more damaging to every other module than the other three, the
+same point Module F's own docs make about paraphrase being the attack that
+defeats most published detectors.
+
+### The paraphrase attack needed a disk-space call, made with the user
+
+`mrm8488/t5-small-finetuned-quora-for-paraphrasing` (T5-small, ~240MB) was
+picked as the smallest known real fine-tuned paraphrase checkpoint on
+Hugging Face, specifically because this phase was built while the dev
+machine had **~178MB free disk** — not enough for even the smallest
+reasonable option. Asked directly, the call was: ship the three structural
+attacks fully now, and make the paraphrase attack's _unavailability_ a
+first-class, well-tested state rather than skip it silently or attempt a
+download that would fail. `ParaphraserUnavailable` (`paraphrase.py`) wraps
+any load failure (`OSError` — no space, or no network) into a clear
+message; the router turns that into a 503; the UI surfaces it inline
+rather than crashing. This is fully implemented, real code — it will work
+correctly the moment the model is actually available — not a stub.
+
+### Why the benchmark script doesn't include Module A or the paraphrase attack
+
+`scripts/attack_lab_benchmark.py` measures accuracy-under-attack for
+Modules B, C, and F only. Module A (watermarking) already has its own real
+robustness benchmark against its own native structural attacks (Phase 2,
+`docs/benchmark.md`) — it's TypeScript-only (`packages/watermark-core`),
+so including it here would mean either shelling out to Node from a Python
+script or reimplementing the same attacks a second time in Python, for a
+result Phase 2 already reports honestly. The interactive Attack Lab UI is
+where a live A/B/C/F comparison actually happens, for a single sample the
+user picks. The paraphrase attack isn't in the automated benchmark for the
+same disk-space reason it isn't downloaded above: this script reports only
+real, actually-measured numbers, never a fabricated or assumed one.
+
+### A real discovery from running it: Module C doesn't generalize past HC3
+
+The benchmark's baseline row (no attack at all) turned up something more
+fundamental than attack robustness: Module C gets **7/16 (44%)** on this
+test set even before any attack — worse than a coin flip — while Module B
+gets 16/16. The cause isn't the attacks; it's a domain mismatch. Module C
+was trained on HC3 (long-form Q&A: finance/medicine/reddit_eli5/etc.,
+human vs. ChatGPT). This benchmark's samples are short personal-narrative
+sentences (human) and raw gpt2 autocomplete continuations (AI) — a
+different register and a different generator than ChatGPT entirely.
+Module C's stylometric features learned real signal _for HC3's specific
+distribution_, and that signal doesn't transfer to a different generator
+or genre. This is a genuine, previously-undocumented limitation, not an
+attack finding — see `docs/limitations.md`, and see
+`docs/architecture.md`'s Module C section for a second, related bug this
+same benchmark run surfaced (the verdict logic itself was broken).

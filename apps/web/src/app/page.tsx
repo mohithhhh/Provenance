@@ -14,7 +14,7 @@ const MODULES: ModuleEntry[] = [
   { letter: 'D', name: 'File provenance (C2PA)', status: 'live', href: '/provenance' },
   { letter: 'E', name: 'Ensemble dashboard', status: 'planned' },
   { letter: 'F', name: 'Retrieval provenance ledger', status: 'live', href: '/ledger' },
-  { letter: 'G', name: 'Attack Lab', status: 'planned' },
+  { letter: 'G', name: 'Attack Lab', status: 'live', href: '/attack-lab' },
 ];
 
 export default function Home() {
