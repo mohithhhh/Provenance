@@ -645,3 +645,36 @@ for a proportionally small gain. Module F's check runs read-only (no
 ledger — a real consequence worth knowing: unlike the Attack Lab, this
 page will essentially always report "no match" here for fresh text unless
 it happens to already be logged.
+
+## Phase 9: Batch mode, benchmark page, deploy
+
+**Batch mode** (`apps/web/src/app/batch`) is Module E's per-text analysis
+run over many lines of input, sequentially (not concurrently — the same
+model-contention reasoning as `_MODEL_LOCK` in Module B applies at the
+batch level too: there's no real throughput to gain from firing many CPU-
+bound model calls at once on a laptop-scale deployment, and it avoids
+hammering an already-serialized backend). `apps/web/src/lib/csv.ts` splits
+input on newlines only — deliberately not a full RFC 4180 parser, since
+each line is one whole text with no field-delimiter ambiguity to resolve —
+but does produce properly quoted/escaped CSV on export, where result rows
+sit in genuine columns next to arbitrary user text that may contain commas
+or quotes.
+
+**The benchmark page** (`apps/web/src/app/benchmark`) republishes real
+numbers that already exist in `docs/benchmark.md` — no new computation, a
+presentational port of the headline tables (Attack Lab accuracy-under-
+attack, Module C's evaluation, Module B's calibration, Module A's
+robustness) for a reader who wants the numbers without cloning the repo.
+
+**Deploy**: `apps/web` builds as a static export (`output: 'export'` in
+`next.config.ts` — verified: every route here is client-rendered against
+`apps/api`, no Next.js API routes or server actions, so `npm run build`
+produces a real `apps/web/out/` directly usable by Cloudflare Pages, no
+adapter needed) to Cloudflare Pages; `apps/api` deploys to Render via the
+root `render.yaml` Blueprint. Full steps in `docs/deploy.md`, including two
+things worth knowing before relying on this: Render's default filesystem
+is ephemeral (every redeploy re-downloads every lazily-loaded model from
+scratch), and this project's own process measured ~650-700MB RSS with
+Modules B, C, and G's paraphraser loaded — comfortably over a typical
+512MB free-tier limit, so a real plan tier is a requirement, not an
+optimization.

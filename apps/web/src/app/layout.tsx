@@ -38,6 +38,12 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
               <Link href="/detect" className="hover:text-zinc-900 dark:hover:text-zinc-100">
                 Statistical Detector
               </Link>
+              <Link href="/batch" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Batch
+              </Link>
+              <Link href="/benchmark" className="hover:text-zinc-900 dark:hover:text-zinc-100">
+                Benchmark
+              </Link>
               <a
                 href="https://github.com/mohithhhh/Provenance"
                 className="hover:text-zinc-900 dark:hover:text-zinc-100"

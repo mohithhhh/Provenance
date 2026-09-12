@@ -65,15 +65,16 @@ panel, and a commit before the next one starts. See the table in
 - [x] Phase 6 — Module D: file provenance (C2PA) (`/provenance`)
 - [x] Phase 7 — Module G: Attack Lab (`/attack-lab`)
 - [x] Phase 8 — Module E: ensemble dashboard (`/ensemble`)
-- [ ] Phase 9 — Batch mode, benchmark page, polish
+- [x] Phase 9 — Batch mode (`/batch`), benchmark page (`/benchmark`), deploy config
 
 ## Tech stack
 
-- **Frontend**: Next.js + TypeScript + Tailwind (`apps/web`), deployed to
-  Vercel.
+- **Frontend**: Next.js + TypeScript + Tailwind (`apps/web`), built as a
+  static export and deployed to Cloudflare Pages.
 - **Backend**: Python + FastAPI (`apps/api`), for modules needing a real
-  language model, embeddings, or scikit-learn. Deployed to Render/Fly.io;
-  fully runnable via Docker Compose locally.
+  language model, embeddings, or scikit-learn. Deployed to Render;
+  fully runnable via Docker Compose locally. See
+  [`docs/deploy.md`](docs/deploy.md) for the full deploy steps.
 - **Shared watermark core**: `packages/watermark-core`, a standalone,
   unit-tested TypeScript package with no UI dependencies.
 
@@ -105,6 +106,50 @@ docker compose up
 /docs                      — Architecture, benchmark, dataset, limitations
 ```
 
+### Architecture
+
+```mermaid
+graph TD
+    User[Browser]
+
+    subgraph web["apps/web (Next.js, static export → Cloudflare Pages)"]
+        A["Module A — Watermark Lab<br/>client-side only"]
+        E["Module E — Ensemble dashboard"]
+        G["Module G — Attack Lab"]
+        Batch["Batch mode"]
+    end
+
+    subgraph api["apps/api (FastAPI → Render)"]
+        DetB["/detect — Module B<br/>gpt2 / distilgpt2"]
+        DetC["/classify — Module C<br/>logistic regression + conformal"]
+        DetF["/ledger — Module F<br/>fastembed + SQLite"]
+        DetD["/provenance — Module D<br/>c2pa-python + Pillow"]
+        DetG["/attacks — Module G<br/>structural + T5 paraphrase"]
+    end
+
+    User --> web
+    A -. "watermark-core (in-browser)" .-> A
+    E --> DetB
+    E --> DetC
+    E --> DetF
+    G --> DetB
+    G --> DetC
+    G --> DetF
+    G --> DetG
+    Batch --> DetB
+    Batch --> DetC
+    Batch --> DetF
+    web -. "file upload" .-> DetD
+```
+
+Module A never leaves the browser (the toy watermark grammar + z-test
+detector run entirely in `packages/watermark-core`); every other module is
+a real network call from `apps/web` to `apps/api`. Modules E, G, and batch
+mode are pure frontend orchestration over B/C/F/G's existing endpoints —
+no dedicated backend route of their own (see `docs/architecture.md`).
+
 ## Live demo
 
-Not yet deployed — added in Phase 9.
+Deployment is configured (Cloudflare Pages for `apps/web`, Render for
+`apps/api` via the root `render.yaml`) but not yet actually deployed —
+see [`docs/deploy.md`](docs/deploy.md) for the exact steps.
