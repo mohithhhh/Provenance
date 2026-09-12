@@ -9,7 +9,12 @@ from __future__ import annotations
 import pytest
 
 from app.classifier.features import FEATURE_NAMES
-from app.classifier.model import ClassifierArtifact, conformal_quantile, predict_from_artifact
+from app.classifier.model import (
+    ClassifierArtifact,
+    conformal_quantile,
+    predict_from_artifact,
+    verdict_from_probability,
+)
 
 _N = len(FEATURE_NAMES)
 
@@ -56,6 +61,26 @@ class TestPredictFromArtifact:
         raw_value = extract_features("the cat sat on the mat")[target_index]
         assert prediction.contributions[target_index] == pytest.approx(2.0 * raw_value)
         assert all(c == 0.0 for i, c in enumerate(prediction.contributions) if i != target_index)
+
+
+class TestVerdictFromProbability:
+    # Regression tests for a real bug found while building Module G's
+    # attack-lab benchmark: the originally-shipped verdict logic checked
+    # whether the *conformal interval* excluded 0.5, but this classifier's
+    # measured quantile (~0.70, docs/benchmark.md) is wide enough that the
+    # interval straddles 0.5 for every probability in [0, 1] — the verdict
+    # was permanently stuck on "uncertain" for any input at all, attacked
+    # or not. Verdict is now based on the point probability estimate
+    # directly, with the interval still reported separately as a genuine
+    # (if wide) calibrated confidence range — see docs/architecture.md.
+    def test_high_probability_is_likely_ai(self) -> None:
+        assert verdict_from_probability(0.9) == "likely-ai"
+
+    def test_low_probability_is_likely_human(self) -> None:
+        assert verdict_from_probability(0.1) == "likely-human"
+
+    def test_near_half_is_uncertain(self) -> None:
+        assert verdict_from_probability(0.5) == "uncertain"
 
 
 class TestConformalQuantile:

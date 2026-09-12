@@ -109,8 +109,7 @@ class Ledger:
     def list_recent(self, limit: int = 50) -> list[LedgerEntry]:
         with self._connect() as conn:
             rows = conn.execute(
-                "SELECT id, text, source, created_at FROM ledger_entries "
-                "ORDER BY id DESC LIMIT ?",
+                "SELECT id, text, source, created_at FROM ledger_entries ORDER BY id DESC LIMIT ?",
                 (limit,),
             ).fetchall()
         return [LedgerEntry(id=r[0], text=r[1], source=r[2], created_at=r[3]) for r in rows]

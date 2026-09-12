@@ -172,3 +172,28 @@ export function checkProvenance(file: File): Promise<ProvenanceResponse> {
   form.append('file', file);
   return request<ProvenanceResponse>('/provenance/file', { method: 'POST', body: form });
 }
+
+export type AttackKind = 'synonym' | 'reorder' | 'truncate' | 'paraphrase';
+
+export const ATTACK_LABELS: Record<AttackKind, string> = {
+  synonym: 'Synonym substitution',
+  reorder: 'Sentence reordering',
+  truncate: 'Truncation',
+  paraphrase: 'Paraphrase (T5)',
+};
+
+export interface AttackResponse {
+  attackedText: string;
+}
+
+export function applyAttack(
+  text: string,
+  attack: AttackKind,
+  strength: number,
+  seed = 0,
+): Promise<AttackResponse> {
+  return request<AttackResponse>('/attacks/apply', {
+    method: 'POST',
+    body: JSON.stringify({ text, attack, strength, seed }),
+  });
+}

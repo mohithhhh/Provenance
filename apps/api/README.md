@@ -104,3 +104,21 @@ images. Images only (JPEG/PNG/WEBP, ≤20MB) — see `docs/architecture.md` and
 the [c2pa-rs](https://github.com/contentauth/c2pa-rs) project (Apache-2.0)
 — see `tests/fixtures/c2pa/README.md`. No setup script needed; unlike
 Modules B/C/F this module needs no downloaded model weights or dataset.
+
+## Module G (Attack Lab) notes
+
+Three structural attacks (synonym substitution, sentence reordering,
+truncation — `app/attacks/attacks.py`) need nothing extra. The fourth,
+real paraphrasing (`app/attacks/paraphrase.py`), needs a ~240MB T5 model
+(`mrm8488/t5-small-finetuned-quora-for-paraphrasing`) downloaded on first
+use, same lazy-load pattern as Modules B/F — if it can't load (no network,
+or not enough disk), `/attacks/apply` returns a 503 with a clear message
+rather than hanging or crashing.
+
+```bash
+PYTHONPATH=. python scripts/attack_lab_benchmark.py  # per-module accuracy-under-attack table
+```
+
+Reuses `scripts/calibrate_binoculars.py`'s 8 human / 8 AI-generated
+samples; writes nothing, just prints a table (see `docs/benchmark.md` for
+the actual run and `docs/architecture.md` for what it found).

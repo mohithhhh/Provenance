@@ -5,12 +5,6 @@ the public `/benchmark` page in Phase 9. No numbers are published here or
 anywhere in this project until they come from an actual run against real
 evaluation data — no hand-waved or placeholder metrics.
 
-Planned:
-
-- **Module G / Attack Lab** (Phase 7): per-module accuracy-under-attack
-  table across the standard attack suite, modeled on the PADBen
-  methodology (Zha et al., 2025) — the project's headline statistic.
-
 ## Module A: Watermarking (Phase 2)
 
 **Reproduce**: `npm run build --workspace=packages/watermark-core && node packages/watermark-core/scripts/robustness-benchmark.mjs`.
@@ -90,7 +84,7 @@ risk of the small model having memorized them).
 
 Clean separation on this small calibration set (8 samples each): gap
 `[0.225, 0.294]`. `AI_THRESHOLD = 0.24` / `HUMAN_THRESHOLD = 0.28` in
-`apps/api/app/routers/detect.py` sit inside that gap. This is a small,
+`apps/api/app/detectors/perplexity.py` sit inside that gap. This is a small,
 illustrative calibration, not a statistically powered benchmark — that's
 what Module C's Phase 5 HC3-based evaluation is for, and Module B's
 numbers should be read with that scale in mind.
@@ -142,3 +136,48 @@ Lower lexical diversity (type-token ratio) and heavier use of "and"/"to"
 read toward AI in this dataset; more period-heavy (shorter-sentence-like)
 punctuation reads toward human. These are correlations learned from HC3
 specifically, not general claims about how AI or human writing works.
+
+## Module G: Attack Lab (Phase 7)
+
+**Reproduce**: `PYTHONPATH=. python scripts/attack_lab_benchmark.py` (from
+`apps/api`, venv active). Same 8 human / 8 gpt2-generated (seed=0) samples
+as Module B's own calibration (`scripts/calibrate_binoculars.py`) — see
+`docs/architecture.md` for why Module A and the paraphrase attack aren't
+in this table.
+
+### Accuracy under attack (n=16: 8 human, 8 AI)
+
+| Attack   | Strength | B (statistical) | C (classifier) | F (retrieval) |
+| -------- | -------- | --------------- | -------------- | ------------- |
+| _(none)_ | —        | 16/16 (100%)    | 7/16 (44%)     | 16/16 (100%)  |
+| synonym  | 0.3      | 15/16 (94%)     | 7/16 (44%)     | 16/16 (100%)  |
+| synonym  | 0.6      | 14/16 (88%)     | 7/16 (44%)     | 16/16 (100%)  |
+| reorder  | 0.3      | 16/16 (100%)    | 7/16 (44%)     | 16/16 (100%)  |
+| reorder  | 0.6      | 15/16 (94%)     | 7/16 (44%)     | 16/16 (100%)  |
+| truncate | 0.3      | 14/16 (88%)     | 7/16 (44%)     | 16/16 (100%)  |
+| truncate | 0.6      | 14/16 (88%)     | 7/16 (44%)     | 9/16 (56%)    |
+
+B and C measure the same thing (still correctly labeled human vs. AI,
+"uncertain" counting as a miss); F measures something different by
+necessity (still retrieved as a match to the specific original it was
+logged from — see `docs/architecture.md`'s Module F section).
+
+**Reading this honestly**:
+
+- **B holds up well** against all three structural attacks at both
+  strengths (88–100%) — these attacks perturb words/order/length, and
+  cross-perplexity is fairly robust to that as long as most of the
+  original text survives.
+- **C's 44% is unchanged by every attack, including "none."** This is not
+  an attack finding — Module C never worked on this test set to begin
+  with. See `docs/limitations.md`: Module C was trained on HC3 (long-form
+  Q&A, human vs. ChatGPT) and doesn't generalize to a different register
+  (short narrative sentences) and a different generator (raw gpt2
+  completions, not ChatGPT).
+- **F stays at 100% until truncation removes most of the text** (56% at
+  truncate/0.6, which keeps only 40% of each sample's words) — exactly the
+  paraphrase-survives-because-meaning-survives property Module F exists
+  for, though truncation is a blunter test of it than real paraphrasing
+  would be. Synonym substitution and reordering barely move it at all,
+  since cosine similarity over sentence embeddings is largely insensitive
+  to both.
