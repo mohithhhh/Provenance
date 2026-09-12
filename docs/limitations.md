@@ -86,6 +86,16 @@ and apply regardless of phase.
   transfer to a different genre or a different generator. Module C's own
   measured 81.4% accuracy (`docs/benchmark.md`) describes its performance
   on HC3-distributed text specifically, not general AI-text detection.
+- **The Ensemble dashboard (Module E) inherits every limitation above from
+  Modules B, C, and F** — combining them does not cancel out Module C's
+  domain-generalization gap or Module B's base-model blind spot, it just
+  shows both alongside each other. Its combined probability is a real
+  inverse-variance-weighted estimate for Module C (a genuine converted
+  confidence interval) but a documented heuristic for Module B (which has
+  no native per-instance interval) — see `docs/architecture.md` for the
+  exact construction. Its per-sentence heatmap repurposes Module B's own
+  top-10-token-fraction output as a visual proxy; it is not a trained
+  per-segment human/AI classifier.
 
 ## The base-model blind spot
 
