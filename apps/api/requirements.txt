@@ -18,3 +18,14 @@ transformers>=5.0.0,<6.0.0
 # the feature set is small and simple enough that a classical model is the
 # right, interpretable choice (see docs/architecture.md).
 scikit-learn>=1.5.0,<2.0.0
+
+# Module D (file provenance): official C2PA SDK (Rust c2pa-rs bindings) for
+# manifest verification, and Pillow for EXIF — the one piece of metadata
+# extraction with no stdlib equivalent, and by far the most common way to
+# read it in Python.
+c2pa-python>=0.37.0,<0.38.0
+Pillow>=10.0.0,<13.0.0
+
+# Needed for FastAPI/Starlette's multipart file-upload parsing (Module D's
+# /provenance/file endpoint is this project's first file-upload route).
+python-multipart>=0.0.12,<1.0.0

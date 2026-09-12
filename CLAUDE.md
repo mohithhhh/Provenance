@@ -86,6 +86,13 @@ for just the backend). Compose bind-mounts source into the containers.
   (see `docs/architecture.md` Module F section before changing this).
 - `ruff` ignores `B008` project-wide — `Depends(...)` as a FastAPI default
   argument is idiomatic, not the mutable-default bug that check targets.
+- Every endpoint is JSON except `/provenance/file` (Module D), which is a
+  multipart file upload — don't assume `request()` in `apps/web/src/lib/api.ts`
+  always sends a JSON body when adding a new client call.
+- Prefer a real, maintained library over reimplementing a spec from scratch
+  when correctness/security matters (Module D's C2PA verification uses the
+  official `c2pa-python` SDK) — contrast with Module A, where reimplementing
+  the watermarking papers directly *is* the point.
 
 ## Frontend architecture (`apps/web`)
 

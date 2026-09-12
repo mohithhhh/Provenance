@@ -343,3 +343,69 @@ model-adjacent blind spot: a classifier trained on stylometric surface
 features is expected to degrade against text specifically optimized to
 evade stylometric detection (Module G's job, Phase 7) — see
 `docs/limitations.md`.
+
+## Module D: File provenance / C2PA (Phase 6)
+
+Lives in `apps/api` (`app/provenance/c2pa.py`, `app/provenance/exif.py`,
+`app/routers/provenance.py`), UI at `apps/web/src/app/provenance`. This is
+the one module in this suite that is not statistical inference at all —
+it's **cryptographic verification of an attached, signed claim**, and the
+UI keeps that distinction visible ("cryptographically verified" vs. every
+other module's "statistically inferred").
+
+### C2PA: real verification via the official SDK, not a reimplementation
+
+Unlike Module A's watermarking schemes (deliberately reimplemented from
+their papers), C2PA manifest verification is **not** reimplemented here —
+`c2pa-python` (official Python bindings to Adobe/CAI's `c2pa-rs`) does the
+actual cryptographic work: parsing the embedded JUMBF manifest, checking
+the claim signature and timestamp, and re-hashing the asset to detect
+tampering. Reimplementing manifest parsing and signature verification from
+scratch would be a large, security-sensitive undertaking with no benefit
+over the SDK the C2PA spec's own authors publish — the honest, lazy choice
+here is to trust the real implementation, the same way this project trusts
+`torch`/`transformers` for language models rather than writing a
+transformer from scratch.
+
+`verify()` (`app/provenance/c2pa.py`) maps the SDK's output to one of four
+states:
+
+- **`valid`** — a manifest is present and `validation_state == "Valid"`:
+  the claim signature and content hash both check out.
+- **`invalid`** — a manifest is present but validation failed (most often
+  `assertion.dataHash.mismatch`: the asset's bytes were altered after
+  signing).
+- **`no-manifest`** — no C2PA data at all (`C2paError.ManifestNotFound`).
+  This is the common case for arbitrary uploads and is not itself a red
+  flag — it just means there's no signed claim to check.
+- **`unsupported`** — the SDK couldn't parse the asset as any recognized
+  format.
+
+**A real, surprising subtlety found while building this**: even a
+pristine, validly-signed test image reports a `signingCredential.untrusted`
+entry in `validation_results`, because the sample fixtures (see
+`tests/fixtures/c2pa/README.md`) are signed with C2PA's own *test* signing
+certificate, which isn't in the SDK's default trust store — yet
+`validation_state` still comes back `"Valid"`, because that state tracks
+hash/timestamp integrity, not real-world CA trust. `C2paResult.failures`
+can therefore be non-empty on an otherwise-valid result; the UI shows
+these as "validation notes" alongside (not instead of) the overall status,
+rather than collapsing everything into a single boolean.
+
+### EXIF: unsigned, shown as context only
+
+`app/provenance/exif.py` uses Pillow (`Image.getexif()`) — the standard,
+well-maintained way to read EXIF in Python; there's no stdlib equivalent.
+EXIF is ordinary, unsigned file metadata that any image editor can
+rewrite freely, so it's surfaced as raw context next to the C2PA result,
+never merged into or treated as part of the provenance verdict.
+
+### Scope: images only, capped at 20MB
+
+Only `image/jpeg`, `image/png`, and `image/webp` are accepted — not PDFs,
+despite the original phase plan mentioning both. C2PA manifests in PDFs
+use a different embedding mechanism than image formats, and EXIF doesn't
+apply to PDFs at all; supporting them would roughly double this phase's
+scope for a demo that already has three working image-based modules. A
+deliberate, documented scope cut, not an oversight — see
+`docs/limitations.md`.

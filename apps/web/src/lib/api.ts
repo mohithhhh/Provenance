@@ -18,7 +18,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   try {
     response = await fetch(`${API_URL}${path}`, {
       ...init,
-      headers: { 'Content-Type': 'application/json', ...init?.headers },
+      // FormData bodies (Module D's file upload) set their own multipart
+      // Content-Type with boundary — forcing JSON here would break that.
+      headers:
+        init?.body instanceof FormData
+          ? init.headers
+          : { 'Content-Type': 'application/json', ...init?.headers },
     });
   } catch {
     throw new ApiError(
@@ -143,4 +148,27 @@ export function classifyText(text: string): Promise<ClassifyResponse> {
     method: 'POST',
     body: JSON.stringify({ text }),
   });
+}
+
+export type C2paStatus = 'valid' | 'invalid' | 'no-manifest' | 'unsupported';
+
+export interface C2paInfo {
+  status: C2paStatus;
+  title: string | null;
+  claimGenerator: string | null;
+  signatureIssuer: string | null;
+  signedAt: string | null;
+  failures: string[];
+}
+
+export interface ProvenanceResponse {
+  c2pa: C2paInfo;
+  exif: Record<string, string>;
+}
+
+/** Multipart upload, unlike every other endpoint here — no JSON body. */
+export function checkProvenance(file: File): Promise<ProvenanceResponse> {
+  const form = new FormData();
+  form.append('file', file);
+  return request<ProvenanceResponse>('/provenance/file', { method: 'POST', body: form });
 }
