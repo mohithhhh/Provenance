@@ -11,7 +11,10 @@ services:
     # Overrides the Dockerfile's dev CMD (--reload, requirements-dev.txt) —
     # Render assigns the port via $PORT, not the Dockerfile's hardcoded 8000.
     dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    plan: starter
+    # Starter (512MB) measured too small: this process alone hits
+    # ~650-700MB with Modules B, C, and G's paraphraser loaded. Standard
+    # (2GB) gives real headroom instead of a placeholder guess.
+    plan: standard
     healthCheckPath: /health
     envVars:
       - key: PYTHONUNBUFFERED

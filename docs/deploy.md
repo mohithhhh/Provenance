@@ -21,14 +21,14 @@ Worker runtime can run), so it goes to Render as a Docker web service.
    finds `render.yaml` at the repo root automatically and provisions the
    `provenance-api` service (Docker, `apps/api/Dockerfile`,
    `healthCheckPath: /health`).
-3. **Pick a plan with real memory headroom, not the free tier.** This
-   project's own process, locally, with Modules B and C's models plus the
-   Attack Lab's paraphrase model all loaded, measured **~650-700MB RSS** —
-   already over a typical 512MB free-tier limit before counting fastembed's
-   embedding model or normal request overhead. `render.yaml` sets
-   `plan: starter` as a placeholder; check Render's current plan RAM
-   before relying on that name specifically, and raise it if you hit OOM
-   restarts.
+3. **`render.yaml` sets `plan: standard` (2GB RAM / 1 CPU, ~$25/mo) —
+   Starter (512MB) measured too small.** This project's own process,
+   locally, with Modules B and C's models plus the Attack Lab's
+   paraphraser all loaded, measured **~650-700MB RSS** — already over
+   Starter's 512MB before counting fastembed's embedding model or normal
+   request overhead. Raise it further if you still hit OOM restarts; these
+   are Render's legacy plan names, still valid in Blueprint files
+   alongside the newer resource-based IDs (`standard` ≡ `1c-2g`).
 4. Leave `ALLOWED_ORIGINS` unset for now (`render.yaml` marks it
    `sync: false` so Render prompts rather than deploying a guess) — you'll
    set it in step 3 of the frontend section below, once the Cloudflare
