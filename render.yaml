@@ -11,10 +11,13 @@ services:
     # Overrides the Dockerfile's dev CMD (--reload, requirements-dev.txt) —
     # Render assigns the port via $PORT, not the Dockerfile's hardcoded 8000.
     dockerCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
-    # Starter (512MB) measured too small: this process alone hits
-    # ~650-700MB with Modules B, C, and G's paraphraser loaded. Standard
-    # (2GB) gives real headroom instead of a placeholder guess.
-    plan: standard
+    # ponytail: deliberate cost-over-robustness tradeoff, chosen knowingly.
+    # Free tier is 512MB RAM — this process alone measures ~650-700MB with
+    # Modules B, C, and G's paraphraser all loaded, so it can OOM-restart if
+    # more than one heavy module gets used in the same visit (see
+    # docs/deploy.md). Upgrade path: `plan: standard` (2GB RAM, ~$25/mo)
+    # removes this ceiling entirely.
+    plan: free
     healthCheckPath: /health
     envVars:
       - key: PYTHONUNBUFFERED

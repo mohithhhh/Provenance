@@ -21,14 +21,17 @@ Worker runtime can run), so it goes to Render as a Docker web service.
    finds `render.yaml` at the repo root automatically and provisions the
    `provenance-api` service (Docker, `apps/api/Dockerfile`,
    `healthCheckPath: /health`).
-3. **`render.yaml` sets `plan: standard` (2GB RAM / 1 CPU, ~$25/mo) —
-   Starter (512MB) measured too small.** This project's own process,
-   locally, with Modules B and C's models plus the Attack Lab's
-   paraphraser all loaded, measured **~650-700MB RSS** — already over
-   Starter's 512MB before counting fastembed's embedding model or normal
-   request overhead. Raise it further if you still hit OOM restarts; these
-   are Render's legacy plan names, still valid in Blueprint files
-   alongside the newer resource-based IDs (`standard` ≡ `1c-2g`).
+3. **`render.yaml` sets `plan: free` — a deliberate cost-over-robustness
+   choice, not an oversight.** Free is 512MB RAM / 0.1 CPU; this project's
+   own process, locally, with Modules B and C's models plus the Attack
+   Lab's paraphraser all loaded, measured **~650-700MB RSS**. Concretely:
+   the service can **OOM-restart if a visitor uses more than one heavy
+   module** (Statistical Detector, Trained Classifier, or the Attack Lab's
+   paraphrase attack) **in the same session** before the process cycles.
+   Upgrade path if this bites: `plan: standard` (2GB RAM/1 CPU, ~$25/mo —
+   Render's legacy plan names are still valid in Blueprint files alongside
+   the newer resource-based IDs, `standard` ≡ `1c-2g`) removes the ceiling
+   entirely.
 4. Leave `ALLOWED_ORIGINS` unset for now (`render.yaml` marks it
    `sync: false` so Render prompts rather than deploying a guess) — you'll
    set it in step 3 of the frontend section below, once the Cloudflare
@@ -36,14 +39,18 @@ Worker runtime can run), so it goes to Render as a Docker web service.
 5. Deploy. Note the resulting URL (`https://provenance-api-xxxx.onrender.com`
    or your custom name) — the frontend needs it.
 
-**Known limitation, not fixed here**: Render's default filesystem is
-ephemeral. Every redeploy or restart re-downloads every lazily-loaded model
-(gpt2, distilgpt2, the fastembed embedding model, the T5 paraphraser —
-gigabytes combined) from scratch on the next request that needs it, adding
-real cold-start latency after every deploy. A persistent disk (a paid
-Render add-on) would fix this; out of scope for this pass — see
-`docs/limitations.md`-style honesty: this is a real, known tradeoff, not
-something quietly assumed away.
+**Known limitations, not fixed here, compounded by the free tier**:
+Render's filesystem is ephemeral, so every redeploy re-downloads every
+lazily-loaded model (gpt2, distilgpt2, the fastembed embedding model, the
+T5 paraphraser — gigabytes combined) from scratch. On the free plan this
+is worse than "on redeploy": the service **spins down after 15 minutes of
+inactivity** and wipes its filesystem on every spin-down, so the first
+request after any idle gap — not just after a deploy — pays the full
+model-download cost again, on top of the usual ~30-60s cold-start wake-up
+time free instances have anyway. A persistent disk and an always-on plan
+(both paid Render add-ons) would fix this; out of scope while free is the
+priority — see `docs/limitations.md`-style honesty: a real, known
+tradeoff, not something quietly assumed away.
 
 ## Frontend: Cloudflare Pages
 
