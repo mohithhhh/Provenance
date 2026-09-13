@@ -671,10 +671,13 @@ robustness) for a reader who wants the numbers without cloning the repo.
 `apps/api`, no Next.js API routes or server actions, so `npm run build`
 produces a real `apps/web/out/` directly usable by Cloudflare Pages, no
 adapter needed) to Cloudflare Pages; `apps/api` deploys to Render via the
-root `render.yaml` Blueprint. Full steps in `docs/deploy.md`, including two
-things worth knowing before relying on this: Render's default filesystem
-is ephemeral (every redeploy re-downloads every lazily-loaded model from
-scratch), and this project's own process measured ~650-700MB RSS with
-Modules B, C, and G's paraphraser loaded — comfortably over a typical
-512MB free-tier limit, so a real plan tier is a requirement, not an
-optimization.
+root `render.yaml` Blueprint, deployed on Render's **free** tier — a
+deliberate cost-over-robustness choice. Full steps and consequences in
+`docs/deploy.md`: Render's filesystem is ephemeral and the free tier spins
+down after 15 minutes idle (wiping it on every spin-down, not just on
+redeploy), so a cold visit re-downloads every lazily-loaded model from
+scratch; and this project's own process measured ~650-700MB RSS with
+Modules B, C, and G's paraphraser loaded — over free tier's 512MB, so the
+service can OOM-restart if a visitor uses more than one heavy module in
+one session. `render.yaml` documents the upgrade path (`plan: standard`)
+inline for exactly this reason.
