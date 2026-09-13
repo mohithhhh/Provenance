@@ -1,0 +1,12 @@
+// Tells Cloudflare where the static site is. This project's dashboard
+// deploy runs through Workers Static Assets (wrangler versions upload —
+// confirmed live, not classic Pages), which reads `assets.directory`, not
+// `pages_build_output_dir`. No `main` entry point needed: this is assets
+// only, no actual Worker script. See docs/deploy.md.
+{
+  "name": "provenance",
+  "compatibility_date": "2026-09-13",
+  "assets": {
+    "directory": "apps/web/out",
+  },
+}

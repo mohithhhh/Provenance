@@ -56,14 +56,29 @@ something quietly assumed away.
    - **Build output directory**: `apps/web/out`
    - **Framework preset**: None (a plain static site — the commands above
      already produce the static export Cloudflare Pages wants directly)
-3. **Build-time environment variable** (Cloudflare Pages → your project →
+3. **`wrangler.jsonc` at the repo root is required.** Cloudflare's current
+   dashboard deploy flow for this kind of project runs through **Workers
+   Static Assets**, not classic Pages (confirmed live: it runs
+   `npx wrangler versions upload`, not `wrangler pages deploy`) — and that
+   command needs its own config to know where the built files are, since
+   the dashboard's "Build output directory" field alone isn't read by it.
+   Without any config: `The Cloudflare application detection logic has
+been run in the root of a workspace instead of targeting a specific
+project`. With the wrong key (`pages_build_output_dir`, which is only
+   for the classic Pages pipeline): `Missing entry-point to Worker script
+or to assets directory`. The key this path actually reads is
+   `assets.directory` — this repo's `wrangler.jsonc` already has it
+   pointing at `apps/web/out`, with no `main` entry (there's no Worker
+   script, this is assets-only). No action needed unless you've renamed
+   `apps/web`.
+4. **Build-time environment variable** (Cloudflare Pages → your project →
    Settings → Environment variables): `NEXT_PUBLIC_API_URL` = the Render
    URL from the backend section above. This is baked in at build time for
    a static export (`apps/web/src/lib/api.ts` reads
    `process.env.NEXT_PUBLIC_API_URL`), not read at runtime — changing it
    means rebuilding, not just restarting.
-4. Deploy. Note the resulting `*.pages.dev` URL (or your custom domain).
-5. Back on Render: set `ALLOWED_ORIGINS` to that URL (comma-separated if
+5. Deploy. Note the resulting `*.pages.dev` URL (or your custom domain).
+6. Back on Render: set `ALLOWED_ORIGINS` to that URL (comma-separated if
    you have more than one, e.g. a custom domain and the `*.pages.dev` one)
    and let the backend redeploy so CORS actually allows the real frontend
    origin instead of the permissive local-dev default (`*`).
