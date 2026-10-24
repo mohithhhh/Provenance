@@ -1,16 +1,5 @@
 import type { ClassifyVerdict } from '@/lib/api';
-
-const VERDICT_STYLES: Record<ClassifyVerdict, string> = {
-  'likely-ai': 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
-  'likely-human': 'bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300',
-  uncertain: 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300',
-};
-
-const VERDICT_LABELS: Record<ClassifyVerdict, string> = {
-  'likely-ai': 'Likely AI-generated',
-  'likely-human': 'Likely human-written',
-  uncertain: 'Uncertain',
-};
+import { Chip, DocLink, Stat, VERDICT_LABEL, VERDICT_TONE } from '../ui';
 
 export function VerdictCard({
   verdict,
@@ -25,38 +14,46 @@ export function VerdictCard({
   intervalHigh: number;
   confidenceLevel: number;
 }) {
+  const level = (confidenceLevel * 100).toFixed(0);
   return (
-    <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-      <span
-        className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${VERDICT_STYLES[verdict]}`}
-      >
-        {VERDICT_LABELS[verdict]}
-      </span>
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-3">
-        <div>
-          <dt className="text-zinc-500 dark:text-zinc-500">AI probability</dt>
-          <dd className="font-mono">{(aiProbability * 100).toFixed(1)}%</dd>
-        </div>
-        <div>
-          <dt className="text-zinc-500 dark:text-zinc-500">
-            {(confidenceLevel * 100).toFixed(0)}% confidence interval
-          </dt>
-          <dd className="font-mono">
-            {(intervalLow * 100).toFixed(1)}%–{(intervalHigh * 100).toFixed(1)}%
-          </dd>
-        </div>
+    <div className="panel flex flex-col gap-5">
+      <Chip tone={VERDICT_TONE[verdict]!}>{VERDICT_LABEL[verdict]}</Chip>
+      <dl className="grid grid-cols-2 gap-6">
+        <Stat label="AI probability" value={`${(aiProbability * 100).toFixed(2)}%`} />
+        <Stat
+          label={`${level}% confidence interval`}
+          value={`${(intervalLow * 100).toFixed(1)}–${(intervalHigh * 100).toFixed(1)}%`}
+        />
       </dl>
-      <p className="text-xs leading-5 text-zinc-500 dark:text-zinc-500">
-        This interval is conformal-calibrated: across many predictions it contains the true answer
-        at least {(confidenceLevel * 100).toFixed(0)}% of the time (see{' '}
-        <a
-          href="https://github.com/mohithhhh/Provenance/blob/main/docs/limitations.md"
-          className="underline underline-offset-2"
-        >
-          docs/limitations.md
-        </a>{' '}
-        for what that guarantee does and doesn&apos;t promise).
+      <IntervalBar low={intervalLow} high={intervalHigh} point={aiProbability} />
+      <p className="muted">
+        The interval is conformal-calibrated: across many predictions it contains the true answer at
+        least {level}% of the time.{' '}
+        <DocLink doc="limitations.md">What that does and doesn&apos;t promise</DocLink>.
       </p>
+    </div>
+  );
+}
+
+/** The 0–100% scale with the interval as a band and the point estimate as
+ * a tick, so a wide interval reads as wide at a glance. */
+function IntervalBar({ low, high, point }: { low: number; high: number; point: number }) {
+  return (
+    <div aria-hidden className="flex flex-col gap-1.5">
+      <div className="relative h-2 rounded-full bg-zinc-100 dark:bg-zinc-800">
+        <div
+          className="absolute inset-y-0 rounded-full bg-accent-500/35"
+          style={{ left: `${low * 100}%`, width: `${(high - low) * 100}%` }}
+        />
+        <div
+          className="absolute -top-1 h-4 w-0.5 -translate-x-1/2 rounded-full bg-accent-600 dark:bg-accent-500"
+          style={{ left: `${point * 100}%` }}
+        />
+      </div>
+      <div className="flex justify-between text-[11px] text-zinc-500 dark:text-zinc-400">
+        <span>0% (human)</span>
+        <span>100% (AI)</span>
+      </div>
     </div>
   );
 }

@@ -12,10 +12,9 @@ tests, real evaluation numbers — no hand-waved claims. See `README.md` for
 the full pitch and `docs/limitations.md` for honest caveats before making any
 claim about what a module can detect.
 
-**Build order matters here**: modules are built one phase at a time, each
-phase landing tests + a working UI panel + a commit before the next starts
-(see the checklist in `README.md`). Don't jump ahead to a not-yet-built
-module's plumbing.
+All nine build phases (modules A–G, plus batch mode and benchmark page) are
+done (checklist in `README.md`). The convention that remains: a new module or
+feature lands with tests + a working UI panel + a commit.
 
 ## Monorepo layout
 
@@ -27,9 +26,9 @@ module's plumbing.
 /docs                      — architecture.md (module design notes), benchmark.md, dataset.md, limitations.md
 ```
 
-`apps/web` runs entirely client-side for the Watermark Lab (Module A); it
-only needs `apps/api` running for the Ledger (Module F) and Detect (Module B)
-pages.
+`apps/web` runs the Watermark Lab (Module A) entirely client-side; every
+other module page (Detect, Classify, Ledger, Provenance, Attack Lab,
+Ensemble, Batch) calls `apps/api`, so run both for anything beyond `/watermark`.
 
 ## Commands
 
@@ -52,6 +51,11 @@ Single test file / single package, run from that package's directory
 npx vitest run src/path/to/file.test.ts
 npx vitest run -t "test name substring"
 ```
+
+CI (`.github/workflows/ci.yml`) runs, in order: `format:check`, `lint`,
+`typecheck`, `test`, `build` for TS, and `ruff check .`, `mypy .` (strict),
+`pytest` for Python — run the same before pushing. Prettier covers the whole
+repo, including `docs/`.
 
 Backend (`apps/api`), Python 3.11 pinned — see "why 3.11" note below:
 
@@ -94,7 +98,21 @@ for just the backend). Compose bind-mounts source into the containers.
   official `c2pa-python` SDK) — contrast with Module A, where reimplementing
   the watermarking papers directly _is_ the point.
 
+Reproducible scripts (run from `apps/api` with the venv active, as
+`PYTHONPATH=. python scripts/<name>.py`): `calibrate_binoculars.py` (Module B
+thresholds), `prepare_hc3.py` → `train_classifier.py` (Module C; HC3 data goes
+to gitignored `data/classifier/`, but the trained
+`app/classifier/artifact/model.json` **is** committed), `attack_lab_benchmark.py`
+(Module G table). Retraining or recalibrating means re-running these and
+updating the matching numbers in `docs/`.
+
 ## Frontend architecture (`apps/web`)
+
+- **It is a static export** (`output: 'export'` in `next.config.ts`; served from
+  `apps/web/out/`). No Next.js API routes, server actions, middleware or
+  dynamic route params — all data comes from client-side fetches in
+  `src/lib/api.ts`, whose base URL is `NEXT_PUBLIC_API_URL` (default
+  `http://localhost:8000`, inlined at build time).
 
 - Each module gets its own route under `src/app/<module>/` (e.g. `watermark`,
   `watermark/robustness`, `ledger`, `detect`), generally a `page.tsx` plus a
@@ -171,3 +189,11 @@ models.py`, `app/embeddings.py`) is not automatically safe to call
   `app/detectors/perplexity.py` and its Phase 7 addendum in
   `docs/architecture.md`. Any new endpoint that might be called
   concurrently on the same model needs the same kind of lock.
+
+## Deploy
+
+Frontend → Cloudflare (Workers Static Assets, configured by root
+`wrangler.jsonc` pointing at `apps/web/out`), backend → Render (Docker, root
+`render.yaml`, `plan: free` on purpose — it can OOM with several heavy modules
+loaded; see `docs/deploy.md` before "fixing" it). The API's CORS origins come
+from `ALLOWED_ORIGINS` (comma-separated, default `*`).

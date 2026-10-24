@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ApiError, checkProvenance, type ProvenanceResponse } from '@/lib/api';
 import { C2paCard } from './C2paCard';
 import { ExifTable } from './ExifTable';
+import { DocLink, PageHeader, PageShell, Section } from '../ui';
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 
@@ -29,61 +30,60 @@ export default function ProvenancePage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-6 py-16">
-      <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">File Provenance</h1>
-        <p className="max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-          Module D. Unlike every other module here, this one doesn&apos;t infer anything
-          statistically — it verifies a{' '}
-          <a href="https://c2pa.org/" className="underline underline-offset-2">
+    <PageShell>
+      <PageHeader
+        letter="D"
+        lede="Checks an image for signed Content Credentials: a tamper-evident record of who made it and how it was edited. No guessing involved, the signature either verifies or it doesn't."
+      >
+        <p>
+          Unlike every other module here, this one infers nothing statistically. It verifies a{' '}
+          <a href="https://c2pa.org/" className="link">
             C2PA
           </a>{' '}
-          Content Credentials manifest, a cryptographically signed record of an image&apos;s edit
-          history, if the file has one. It also surfaces raw EXIF metadata for context — unsigned
-          and freely editable, so shown as-is, never as a provenance claim. See{' '}
-          <a
-            href="https://github.com/mohithhhh/Provenance/blob/main/docs/architecture.md"
-            className="underline underline-offset-2"
-          >
-            docs/architecture.md
-          </a>
-          .
+          manifest with the official SDK, if the file has one.
         </p>
-      </div>
+        <p>
+          It also shows raw EXIF metadata for context. EXIF is unsigned and freely editable, so it
+          is shown as-is and never treated as a provenance claim.{' '}
+          <DocLink doc="architecture.md">Design notes</DocLink>.
+        </p>
+      </PageHeader>
 
-      <section className="flex flex-col gap-4">
-        <input
-          type="file"
-          accept={ACCEPTED_TYPES.join(',')}
-          onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          className="text-sm"
-        />
-        <button
-          onClick={handleRun}
-          disabled={busy || !file}
-          className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
+      <section className="panel flex flex-col gap-4">
+        <label className="label">
+          Image
+          <input
+            type="file"
+            accept={ACCEPTED_TYPES.join(',')}
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            className="field-file"
+          />
+        </label>
+        <p className="muted">JPEG, PNG or WebP, up to 20 MB.</p>
+        <button onClick={handleRun} disabled={busy || !file} className="btn btn-primary">
           {busy ? 'Checking…' : 'Check provenance'}
         </button>
-        {error && <p className="text-sm text-rose-600 dark:text-rose-400">{error}</p>}
+        {error && <p className="error-msg">{error}</p>}
       </section>
+
+      {!result && !error && (
+        <p className="empty">
+          Results appear here: whether the image carries valid Content Credentials, who signed them,
+          and its raw metadata.
+        </p>
+      )}
 
       {result && (
         <>
-          <section className="flex flex-col gap-4">
-            <h2 className="text-lg font-medium">C2PA manifest</h2>
+          <Section title="Content Credentials (C2PA)">
             <C2paCard c2pa={result.c2pa} />
-          </section>
+          </Section>
 
-          <section className="flex flex-col gap-4">
-            <h2 className="text-lg font-medium">EXIF metadata</h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-500">
-              Raw and unsigned — shown for context, not verified.
-            </p>
+          <Section title="EXIF metadata" description="Raw and unsigned, shown for context only.">
             <ExifTable exif={result.exif} />
-          </section>
+          </Section>
         </>
       )}
-    </main>
+    </PageShell>
   );
 }

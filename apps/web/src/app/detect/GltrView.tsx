@@ -3,7 +3,7 @@ import type { Bucket, DetectToken } from '@/lib/api';
 const BUCKET_CLASSES: Record<Bucket, string> = {
   top10: 'bg-blue-200 text-blue-900 dark:bg-blue-900 dark:text-blue-200',
   top100: 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300',
-  top1000: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400',
+  top1000: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
   rest: 'text-zinc-500 dark:text-zinc-500',
 };
 

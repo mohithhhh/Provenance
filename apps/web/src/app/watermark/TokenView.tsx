@@ -9,7 +9,7 @@ export interface TokenChip {
 const TONE_CLASSES: Record<TokenChip['tone'], string> = {
   green: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300',
   red: 'bg-rose-100 text-rose-800 dark:bg-rose-950 dark:text-rose-300',
-  neutral: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-900 dark:text-zinc-500',
+  neutral: 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400',
 };
 
 /** Renders a token stream as inline highlighted chips — green-list/red-list

@@ -25,8 +25,8 @@ export type Verdict = 'likely-ai' | 'likely-human' | 'uncertain';
 export type EnsembleVerdict = Verdict | 'disagreement';
 
 // Mirrors app/detectors/perplexity.py's AI_THRESHOLD/HUMAN_THRESHOLD.
-const B_AI_THRESHOLD = 0.24;
-const B_HUMAN_THRESHOLD = 0.28;
+export const B_AI_THRESHOLD = 0.24;
+export const B_HUMAN_THRESHOLD = 0.28;
 
 // Mirrors app/classifier/model.py's UNCERTAIN_MARGIN.
 const UNCERTAIN_MARGIN = 0.1;

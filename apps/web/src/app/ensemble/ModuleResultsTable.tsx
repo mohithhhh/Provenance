@@ -1,39 +1,71 @@
+import { Chip, LetterTile, VERDICT_LABEL, VERDICT_TONE } from '../ui';
+
 export interface ModuleResultRow {
+  letter: string;
   module: string;
+  /** A text-module verdict, or `matched`/`no-match`/`error`. */
+  verdict: string;
   value: string;
   note?: string;
 }
+
+const EXTRA_CHIPS: Record<string, { tone: 'signal' | 'neutral' | 'alert'; label: string }> = {
+  matched: { tone: 'signal', label: 'Matched' },
+  'no-match': { tone: 'neutral', label: 'No match' },
+  error: { tone: 'alert', label: 'Error' },
+};
 
 /** Every module's own result, side by side — never blended into the
  * combined score above. The point of an ensemble dashboard that shows
  * disagreement is that a reader can always drop back down to what each
  * method actually said on its own. */
-export function ModuleResultsTable({ rows }: { rows: ModuleResultRow[] }) {
+export function ModuleResultsTable({
+  rows,
+  bare,
+  revealFromMs,
+}: {
+  rows: ModuleResultRow[];
+  /** Drop the panel chrome when nested inside another panel. */
+  bare?: boolean;
+  /** Stagger rows in with the `.reveal` animation, starting at this delay. */
+  revealFromMs?: number;
+}) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-      <table className="min-w-full border-collapse text-left text-sm">
-        <thead>
-          <tr className="text-xs text-zinc-500 dark:text-zinc-500">
-            <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">Module</th>
-            <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">Result</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.module}>
-              <td className="px-4 py-2 font-medium">{r.module}</td>
-              <td className="px-4 py-2 font-mono">
+    <ul
+      className={`flex flex-col divide-y divide-zinc-200 dark:divide-zinc-800 ${bare ? '' : 'panel py-1 sm:py-1'}`}
+    >
+      {rows.map((r, i) => {
+        const extra = EXTRA_CHIPS[r.verdict];
+        return (
+          <li
+            key={r.letter}
+            className={`flex items-center gap-4 py-3.5 ${revealFromMs !== undefined ? 'reveal' : ''}`}
+            style={
+              revealFromMs !== undefined
+                ? { animationDelay: `${revealFromMs + i * 350}ms` }
+                : undefined
+            }
+          >
+            <LetterTile letter={r.letter} size="sm" />
+            <div className="flex min-w-0 flex-1 flex-col">
+              <span className="text-sm font-medium">{r.module}</span>
+              <span className="text-xs leading-5 text-zinc-500 tabular-nums dark:text-zinc-400">
                 {r.value}
-                {r.note && (
-                  <span className="ml-2 font-sans text-xs text-zinc-500 dark:text-zinc-500">
-                    {r.note}
-                  </span>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+              </span>
+              {r.note && (
+                <span className="text-xs leading-5 text-zinc-500 dark:text-zinc-400">{r.note}</span>
+              )}
+            </div>
+            {extra ? (
+              <Chip tone={extra.tone}>{extra.label}</Chip>
+            ) : (
+              <Chip tone={VERDICT_TONE[r.verdict] ?? 'neutral'}>
+                {VERDICT_LABEL[r.verdict] ?? r.verdict}
+              </Chip>
+            )}
+          </li>
+        );
+      })}
+    </ul>
   );
 }
