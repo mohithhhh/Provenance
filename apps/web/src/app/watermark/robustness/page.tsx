@@ -12,6 +12,7 @@ import {
   type RobustnessPoint,
   type Scheme,
 } from '@provenance/watermark-core';
+import { PageHeader, PageShell, Section } from '../../ui';
 import { LineChart, type ChartSeries } from './LineChart';
 
 const STRENGTHS = [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.75, 1];
@@ -71,142 +72,139 @@ export default function RobustnessLabPage() {
     : [];
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-6 py-16">
-      <div className="flex flex-col gap-3">
-        <Link
-          href="/watermark"
-          className="w-fit text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-500 dark:hover:text-zinc-100"
-        >
-          ← Watermark Lab
-        </Link>
-        <h1 className="text-2xl font-semibold tracking-tight">Robustness Lab</h1>
-        <p className="max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-          Two things Module A needs to be honest about: how fast detection degrades under
-          perturbation, and what the green-list bias strength (δ) actually costs. The attacks here
-          are simple, structural perturbations (same-category word swaps, deletion, insertion, local
-          reordering) — not real paraphrasing. A real paraphrase attack (an actual model rewriting
-          the text) is expected to be considerably more damaging, and is Module G&apos;s job (Phase
-          7), not this page&apos;s.
+    <PageShell>
+      <PageHeader
+        letter="A"
+        title="Watermark robustness"
+        lede="How fast does detection fall apart as the text gets edited, and what does a stronger watermark cost? Both sweeps run in your browser."
+      >
+        <p>
+          The attacks here are simple structural perturbations: same-category word swaps, deletion,
+          insertion and local reordering. They are not real paraphrasing. A real paraphrase attack,
+          where a model rewrites the text, is expected to be more damaging and is the Attack
+          Lab&apos;s job, not this page&apos;s.
         </p>
-      </div>
-
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-medium">Setup</h2>
-        <div className="flex w-fit gap-1 rounded-full border border-zinc-200 p-1 text-sm dark:border-zinc-800">
-          {(['greenlist', 'gumbel'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setScheme(s)}
-              className={`rounded-full px-3 py-1 transition ${
-                scheme === s
-                  ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900'
-                  : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100'
-              }`}
-            >
-              {s === 'greenlist' ? 'Green-list' : 'Gumbel'}
-            </button>
-          ))}
-        </div>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-          <label className="flex flex-col gap-1 text-sm">
-            Key
-            <input
-              type="text"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            Length: {length}
-            <input
-              type="range"
-              min={60}
-              max={300}
-              step={10}
-              value={length}
-              onChange={(e) => setLength(Number(e.target.value))}
-            />
-          </label>
-          {scheme === 'greenlist' && (
-            <>
-              <label className="flex flex-col gap-1 text-sm">
-                Gamma: {gamma.toFixed(2)}
-                <input
-                  type="range"
-                  min={0.1}
-                  max={0.9}
-                  step={0.05}
-                  value={gamma}
-                  onChange={(e) => setGamma(Number(e.target.value))}
-                />
-              </label>
-              <label className="flex flex-col gap-1 text-sm">
-                Delta (for robustness sweep): {delta.toFixed(1)}
-                <input
-                  type="range"
-                  min={0}
-                  max={8}
-                  step={0.5}
-                  value={delta}
-                  onChange={(e) => setDelta(Number(e.target.value))}
-                />
-              </label>
-            </>
-          )}
-        </div>
-      </section>
-
-      {/* Robustness sweep */}
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-medium">Robustness under attack</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          Generates one watermarked passage, then applies each attack at increasing strength
-          (fraction of words affected) and re-detects. The dashed line is the z = 4 detection
-          threshold used elsewhere in this project.
+        <p>
+          Seeded, repeatable versions of both sweeps are in the{' '}
+          <Link href="/benchmark" className="link">
+            benchmark
+          </Link>
+          .
         </p>
-        <button
-          onClick={handleRunRobustness}
-          className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
-          Run robustness sweep
-        </button>
-        {robustness && (
-          <LineChart
-            series={robustnessSeries}
-            xLabel="Attack strength"
-            yLabel="z-score"
-            threshold={{ y: Z_THRESHOLD, label: 'detection threshold' }}
-            formatX={(x) => `${Math.round(x * 100)}%`}
-            formatY={(y) => y.toFixed(1)}
-          />
-        )}
-      </section>
+      </PageHeader>
 
-      {/* Delta tradeoff */}
-      {scheme === 'greenlist' && (
-        <section className="flex flex-col gap-4">
-          <h2 className="text-lg font-medium">Bias strength (δ) tradeoff</h2>
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">
-            For each δ, generates a fresh passage and self-detects it. Green fraction is this
-            project&apos;s proxy for distortion: how far the observed green-token rate sits above γ,
-            i.e. how hard the bias pushed sampling away from what an unwatermarked model would have
-            produced. There is no real fluency/perplexity model behind this toy grammar, so unlike
-            the original paper this can&apos;t report an actual text-quality cost — only this
-            structural proxy for it.
-          </p>
-          <button
-            onClick={handleRunTradeoff}
-            className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-700 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-          >
-            Run δ tradeoff sweep
+      <Section title="Setup">
+        <div className="panel flex flex-col gap-5">
+          <div className="segmented" role="group" aria-label="Watermarking scheme">
+            {(['greenlist', 'gumbel'] as const).map((s) => (
+              <button key={s} aria-pressed={scheme === s} onClick={() => setScheme(s)}>
+                {s === 'greenlist' ? 'Green-list' : 'Gumbel'}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            <label className="label">
+              Key
+              <input
+                type="text"
+                value={key}
+                onChange={(e) => setKey(e.target.value)}
+                className="field"
+              />
+            </label>
+            <label className="label">
+              <span>
+                Length{' '}
+                <span className="font-normal text-zinc-500 tabular-nums">{length} words</span>
+              </span>
+              <input
+                type="range"
+                min={60}
+                max={300}
+                step={10}
+                value={length}
+                onChange={(e) => setLength(Number(e.target.value))}
+              />
+            </label>
+            {scheme === 'greenlist' && (
+              <>
+                <label className="label">
+                  <span>
+                    Green-list fraction (γ){' '}
+                    <span className="font-normal text-zinc-500 tabular-nums">
+                      {gamma.toFixed(2)}
+                    </span>
+                  </span>
+                  <input
+                    type="range"
+                    min={0.1}
+                    max={0.9}
+                    step={0.05}
+                    value={gamma}
+                    onChange={(e) => setGamma(Number(e.target.value))}
+                  />
+                </label>
+                <label className="label">
+                  <span>
+                    Bias strength for the attack sweep (δ){' '}
+                    <span className="font-normal text-zinc-500 tabular-nums">
+                      {delta.toFixed(1)}
+                    </span>
+                  </span>
+                  <input
+                    type="range"
+                    min={0}
+                    max={8}
+                    step={0.5}
+                    value={delta}
+                    onChange={(e) => setDelta(Number(e.target.value))}
+                  />
+                </label>
+              </>
+            )}
+          </div>
+        </div>
+      </Section>
+
+      <Section
+        title="Robustness under attack"
+        description={`Generates one watermarked passage, applies each attack at increasing strength (the fraction of words affected) and re-detects. The dashed line is the z = ${Z_THRESHOLD} detection threshold used across this project.`}
+        action={
+          <button onClick={handleRunRobustness} className="btn btn-primary">
+            Run attack sweep
           </button>
-          {tradeoff && (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div className="flex flex-col gap-2">
-                <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Detection strength vs δ
-                </h3>
+        }
+      >
+        {robustness ? (
+          <div className="panel">
+            <LineChart
+              series={robustnessSeries}
+              xLabel="Attack strength"
+              yLabel="z-score"
+              threshold={{ y: Z_THRESHOLD, label: 'detection threshold' }}
+              formatX={(x) => `${Math.round(x * 100)}%`}
+              formatY={(y) => y.toFixed(1)}
+            />
+          </div>
+        ) : (
+          <p className="empty">The z-score for each of the four attacks will chart here.</p>
+        )}
+      </Section>
+
+      {scheme === 'greenlist' && (
+        <Section
+          title="Bias strength (δ) tradeoff"
+          description="For each δ, generates a fresh passage and self-detects it. Green fraction stands in for distortion: how far the green-word rate sits above γ, meaning how hard the bias pushed sampling away from unwatermarked text."
+          action={
+            <button onClick={handleRunTradeoff} className="btn btn-primary">
+              Run δ sweep
+            </button>
+          }
+        >
+          {tradeoff ? (
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+              <div className="panel flex flex-col gap-3">
+                <h3 className="text-sm font-medium">Detection strength by δ</h3>
                 <LineChart
                   series={[
                     {
@@ -222,10 +220,8 @@ export default function RobustnessLabPage() {
                   formatY={(y) => y.toFixed(1)}
                 />
               </div>
-              <div className="flex flex-col gap-2">
-                <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Distortion proxy (green fraction) vs δ
-                </h3>
+              <div className="panel flex flex-col gap-3">
+                <h3 className="text-sm font-medium">Distortion proxy (green fraction) by δ</h3>
                 <LineChart
                   series={[
                     {
@@ -241,9 +237,15 @@ export default function RobustnessLabPage() {
                 />
               </div>
             </div>
+          ) : (
+            <p className="empty">
+              Two charts will appear here: detection strength and distortion, each against δ. The
+              toy grammar has no real fluency model, so distortion is a structural proxy, not a
+              measured text-quality cost.
+            </p>
           )}
-        </section>
+        </Section>
       )}
-    </main>
+    </PageShell>
   );
 }

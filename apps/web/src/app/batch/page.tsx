@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { checkLedger, classifyText, detectStatistical } from '@/lib/api';
 import { parseLines, toCsv } from '@/lib/csv';
 import { computeEnsemble } from '@/lib/ensemble';
+import { Chip, PageHeader, PageShell, Section, VERDICT_LABEL, VERDICT_TONE } from '../ui';
 
 interface BatchRow {
   text: string;
@@ -103,38 +104,44 @@ export default function BatchPage() {
   const lineCount = parseLines(input).length;
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-6 py-16">
-      <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Batch Mode</h1>
-        <p className="max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-          Analyze many texts at once through Modules B, C, F, and the ensemble combination (Module
-          E) — one text per line, processed one at a time (these are real, CPU-bound model calls,
-          not something to fire off all at once). Upload a plain-text or one-column CSV file, or
-          paste directly below, then export the results as CSV.
+    <PageShell wide>
+      <PageHeader
+        title="Batch mode"
+        lede="Run many texts through the statistical detector, the classifier, the ledger and the ensemble in one go, then export everything as CSV."
+      >
+        <p>
+          One text per line. Texts are processed one at a time, because these are real, CPU-bound
+          model calls and firing them all at once would only slow every one of them down.
         </p>
-      </div>
+      </PageHeader>
 
-      <section className="flex flex-col gap-4">
-        <input
-          type="file"
-          accept=".txt,.csv"
-          onChange={handleFile}
-          className="text-sm"
-          disabled={busy}
-        />
+      <section className="panel flex flex-col gap-4">
+        <label className="label">
+          Upload a .txt or one-column .csv
+          <input
+            type="file"
+            accept=".txt,.csv"
+            onChange={handleFile}
+            className="field-file"
+            disabled={busy}
+          />
+        </label>
         <textarea
           value={input}
           onChange={(e) => setInput(e.target.value)}
           rows={6}
-          placeholder={'One text per line, e.g.:\nFirst text to analyze.\nSecond text to analyze.'}
-          className="rounded border border-zinc-300 bg-transparent px-3 py-2 font-mono text-sm dark:border-zinc-700"
+          aria-label="Texts to analyze, one per line"
+          placeholder={
+            'Or paste one text per line, e.g.:\nFirst text to analyze.\nSecond text to analyze.'
+          }
+          className="field font-mono text-sm"
           disabled={busy}
         />
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <button
             onClick={handleRun}
             disabled={busy || lineCount === 0}
-            className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            className="btn btn-primary"
           >
             {busy
               ? 'Analyzing…'
@@ -143,60 +150,101 @@ export default function BatchPage() {
                 : `Analyze ${lineCount} text${lineCount === 1 ? '' : 's'}`}
           </button>
           {progress && (
-            <span className="text-sm text-zinc-500 dark:text-zinc-500">
-              {progress.done} / {progress.total}
-            </span>
+            <div className="flex min-w-48 flex-1 items-center gap-3">
+              <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                <div
+                  className="h-full rounded-full bg-accent-500 transition-[width] duration-300"
+                  style={{ width: `${(progress.done / progress.total) * 100}%` }}
+                />
+              </div>
+              <span className="text-sm text-zinc-500 tabular-nums dark:text-zinc-400">
+                {progress.done} of {progress.total}
+              </span>
+            </div>
           )}
         </div>
       </section>
 
+      {rows.length === 0 && !busy && (
+        <p className="empty">
+          Results appear here as a table, one row per text, filling in as each one finishes.
+        </p>
+      )}
+
       {rows.length > 0 && (
-        <section className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-medium">Results</h2>
+        <Section
+          title="Results"
+          action={
             <button
               onClick={() => downloadCsv(rows)}
-              className="text-sm text-zinc-600 underline underline-offset-2 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+              disabled={busy}
+              className="btn btn-secondary btn-sm"
             >
-              Download CSV →
+              Download CSV
             </button>
-          </div>
-          <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-            <table className="min-w-full border-collapse text-left text-sm">
+          }
+        >
+          <div className="table-wrap">
+            <table className="data-table">
               <thead>
-                <tr className="text-xs text-zinc-500 dark:text-zinc-500">
-                  <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">Text</th>
-                  <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">B</th>
-                  <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">C</th>
-                  <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">F</th>
-                  <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
-                    Ensemble
-                  </th>
+                <tr>
+                  <th>Text</th>
+                  <th>B, statistical</th>
+                  <th>C, classifier</th>
+                  <th>F, ledger</th>
+                  <th>Ensemble</th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((r, i) => (
                   <tr key={i}>
-                    <td className="max-w-xs truncate px-4 py-2 font-mono" title={r.text}>
+                    <td className="max-w-xs truncate font-mono text-xs" title={r.text}>
                       {r.text}
                     </td>
-                    <td className="px-4 py-2 font-mono text-xs">
-                      {r.bScore} ({r.bVerdict})
+                    <td>
+                      <VerdictCell verdict={r.bVerdict} detail={r.bScore} />
                     </td>
-                    <td className="px-4 py-2 font-mono text-xs">
-                      {r.cProbability} ({r.cVerdict})
+                    <td>
+                      <VerdictCell verdict={r.cVerdict} detail={r.cProbability} />
                     </td>
-                    <td className="px-4 py-2 font-mono text-xs">{r.fMatch}</td>
-                    <td className="px-4 py-2 font-mono text-xs">
-                      {r.ensembleProbability} ({r.ensembleVerdict})
+                    <td>
+                      <Chip
+                        tone={
+                          r.fMatch === 'matched'
+                            ? 'signal'
+                            : r.fMatch === 'error'
+                              ? 'alert'
+                              : 'neutral'
+                        }
+                      >
+                        {r.fMatch === 'matched'
+                          ? 'Matched'
+                          : r.fMatch === 'error'
+                            ? 'Error'
+                            : 'No match'}
+                      </Chip>
+                    </td>
+                    <td>
+                      <VerdictCell verdict={r.ensembleVerdict} detail={r.ensembleProbability} />
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </section>
+        </Section>
       )}
-    </main>
+    </PageShell>
+  );
+}
+
+function VerdictCell({ verdict, detail }: { verdict: string; detail: string }) {
+  if (!verdict) return <span className="text-zinc-400">—</span>;
+  if (verdict === 'error') return <Chip tone="alert">Error</Chip>;
+  return (
+    <span className="flex flex-col items-start gap-1">
+      <Chip tone={VERDICT_TONE[verdict] ?? 'neutral'}>{VERDICT_LABEL[verdict] ?? verdict}</Chip>
+      {detail && <span className="text-xs text-zinc-500 dark:text-zinc-400">{detail}</span>}
+    </span>
   );
 }

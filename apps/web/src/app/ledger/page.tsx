@@ -10,6 +10,7 @@ import {
   type CheckResponse,
   type EntryResponse,
 } from '@/lib/api';
+import { Chip, DocLink, PageHeader, PageShell, Section } from '../ui';
 
 function formatTime(iso: string): string {
   try {
@@ -96,140 +97,178 @@ export default function LedgerPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-6 py-16">
-      <div className="flex flex-col gap-3">
-        <h1 className="text-2xl font-semibold tracking-tight">Retrieval Provenance Ledger</h1>
-        <p className="max-w-2xl text-sm leading-6 text-zinc-600 dark:text-zinc-400">
-          Module F. Log text here, then paste a paraphrase of it below — semantic embedding
-          similarity survives paraphrasing far better than exact-match or statistical detectors do.{' '}
-          <strong>This only recognizes text that was logged here first.</strong> It is not a general
-          AI-content detector and cannot identify arbitrary text it never saw; see{' '}
-          <a
-            href="https://github.com/mohithhhh/Provenance/blob/main/docs/limitations.md"
-            className="underline underline-offset-2"
-          >
-            docs/limitations.md
-          </a>
+    <PageShell>
+      <PageHeader
+        letter="F"
+        lede="Log text here, then check a reworded version of it later. Matching on meaning rather than exact words survives paraphrasing that breaks the statistical detectors."
+      >
+        <p>
+          <strong className="font-medium text-zinc-800 dark:text-zinc-200">
+            This only recognizes text that was logged here first.
+          </strong>{' '}
+          It is not a general AI-content detector and cannot identify arbitrary text it never saw.
+        </p>
+        <p>
+          Entries are compared by embedding similarity, brute-force over the whole log, which is the
+          right tradeoff at this scale. <DocLink doc="limitations.md">Read the limitations</DocLink>
           .
         </p>
+      </PageHeader>
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Section title="Log" description="Record text as if this suite had generated it.">
+          <div className="panel flex flex-1 flex-col gap-4">
+            <textarea
+              value={logText}
+              onChange={(e) => setLogText(e.target.value)}
+              rows={5}
+              aria-label="Text to log"
+              placeholder="Paste text to log"
+              className="field"
+            />
+            <label className="label">
+              Source label
+              <input
+                type="text"
+                value={logSource}
+                onChange={(e) => setLogSource(e.target.value)}
+                className="field"
+              />
+            </label>
+            <button
+              onClick={handleLog}
+              disabled={logBusy || logText.trim().length === 0}
+              className="btn btn-primary"
+            >
+              {logBusy ? 'Logging…' : 'Log to ledger'}
+            </button>
+            {logStatus && (
+              <p className="text-sm text-emerald-700 dark:text-emerald-400">{logStatus}</p>
+            )}
+            {logError && <p className="error-msg">{logError}</p>}
+          </div>
+        </Section>
+
+        <Section title="Check" description="Paste a paraphrase of something logged to find it.">
+          <div className="panel flex flex-1 flex-col gap-4">
+            <textarea
+              value={checkText}
+              onChange={(e) => setCheckText(e.target.value)}
+              rows={5}
+              aria-label="Text to check against the ledger"
+              placeholder="Paste text to check against the ledger"
+              className="field"
+            />
+            <button
+              onClick={handleCheck}
+              disabled={checkBusy || checkText.trim().length === 0}
+              className="btn btn-primary"
+            >
+              {checkBusy ? 'Checking…' : 'Check ledger'}
+            </button>
+            {checkError && <p className="error-msg">{checkError}</p>}
+          </div>
+        </Section>
       </div>
 
-      {/* Log */}
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-medium">Log</h2>
-        <textarea
-          value={logText}
-          onChange={(e) => setLogText(e.target.value)}
-          rows={4}
-          placeholder="Paste text to log as if this suite generated it"
-          className="rounded border border-zinc-300 bg-transparent px-3 py-2 font-mono text-sm dark:border-zinc-700"
-        />
-        <label className="flex w-fit flex-col gap-1 text-sm">
-          Source label
-          <input
-            type="text"
-            value={logSource}
-            onChange={(e) => setLogSource(e.target.value)}
-            className="rounded border border-zinc-300 bg-transparent px-3 py-2 dark:border-zinc-700"
-          />
-        </label>
-        <button
-          onClick={handleLog}
-          disabled={logBusy || logText.trim().length === 0}
-          className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
-          {logBusy ? 'Logging…' : 'Log to ledger'}
-        </button>
-        {logStatus && <p className="text-sm text-emerald-700 dark:text-emerald-400">{logStatus}</p>}
-        {logError && <p className="text-sm text-rose-600 dark:text-rose-400">{logError}</p>}
-      </section>
-
-      {/* Check */}
-      <section className="flex flex-col gap-4">
-        <h2 className="text-lg font-medium">Check</h2>
-        <textarea
-          value={checkText}
-          onChange={(e) => setCheckText(e.target.value)}
-          rows={4}
-          placeholder="Paste text (e.g. a paraphrase of something you logged above) to check against the ledger"
-          className="rounded border border-zinc-300 bg-transparent px-3 py-2 font-mono text-sm dark:border-zinc-700"
-        />
-        <button
-          onClick={handleCheck}
-          disabled={checkBusy || checkText.trim().length === 0}
-          className="w-fit rounded-full bg-zinc-900 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-300"
-        >
-          {checkBusy ? 'Checking…' : 'Check ledger'}
-        </button>
-        {checkError && <p className="text-sm text-rose-600 dark:text-rose-400">{checkError}</p>}
-        {checkResult && (
-          <div className="flex flex-col gap-3 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
-            <span
-              className={`w-fit rounded-full px-3 py-1 text-xs font-medium ${
-                checkResult.matched
-                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                  : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'
-              }`}
-            >
+      {checkResult && (
+        <Section
+          title="Closest entries"
+          description={`A match needs at least ${(checkResult.threshold * 100).toFixed(0)}% cosine similarity.`}
+          action={
+            <Chip tone={checkResult.matched ? 'signal' : 'neutral'}>
               {checkResult.matched ? 'Matched a logged entry' : 'No match'}
-            </span>
-            <p className="text-xs text-zinc-500 dark:text-zinc-500">
-              Threshold: {checkResult.threshold.toFixed(2)} cosine similarity
-            </p>
-            {checkResult.topMatches.length === 0 ? (
-              <p className="text-sm text-zinc-500 dark:text-zinc-500">
-                The ledger is empty, or nothing came back — log something above first.
-              </p>
-            ) : (
-              <ul className="flex flex-col gap-2">
-                {checkResult.topMatches.map((m) => (
-                  <li
-                    key={m.id}
-                    className="flex flex-col gap-1 rounded border border-zinc-200 p-3 text-sm dark:border-zinc-800"
-                  >
-                    <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-500">
-                      <span>
-                        #{m.id} · {m.source} · {formatTime(m.createdAt)}
-                      </span>
-                      <span className="font-mono">{(m.similarity * 100).toFixed(1)}%</span>
-                    </div>
-                    <p className="font-mono text-zinc-700 dark:text-zinc-300">{m.snippet}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* Recent entries */}
-      <section className="flex flex-col gap-4">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-lg font-medium">Recent ledger entries</h2>
-          {count !== null && (
-            <span className="text-xs text-zinc-500 dark:text-zinc-500">{count} total</span>
+            </Chip>
+          }
+        >
+          {checkResult.topMatches.length === 0 ? (
+            <p className="empty">The ledger is empty. Log something first.</p>
+          ) : (
+            <ul className="flex flex-col gap-2">
+              {checkResult.topMatches.map((m) => (
+                <EntryCard
+                  key={m.id}
+                  id={m.id}
+                  source={m.source}
+                  createdAt={m.createdAt}
+                  snippet={m.snippet}
+                  similarity={m.similarity}
+                  threshold={checkResult.threshold}
+                />
+              ))}
+            </ul>
           )}
-        </div>
-        {entriesError && <p className="text-sm text-rose-600 dark:text-rose-400">{entriesError}</p>}
+        </Section>
+      )}
+
+      <Section
+        title="Recent entries"
+        action={
+          count !== null && (
+            <span className="text-sm text-zinc-500 tabular-nums dark:text-zinc-400">
+              {count} logged in total
+            </span>
+          )
+        }
+      >
+        {entriesError && <p className="error-msg">{entriesError}</p>}
         {entries && entries.length === 0 && !entriesError && (
-          <p className="text-sm text-zinc-500 dark:text-zinc-500">Nothing logged yet.</p>
+          <p className="empty">Nothing logged yet. Text you log above will be listed here.</p>
         )}
         {entries && entries.length > 0 && (
           <ul className="flex flex-col gap-2">
             {entries.map((e) => (
-              <li
+              <EntryCard
                 key={e.id}
-                className="flex flex-col gap-1 rounded border border-zinc-200 p-3 text-sm dark:border-zinc-800"
-              >
-                <span className="text-xs text-zinc-500 dark:text-zinc-500">
-                  #{e.id} · {e.source} · {formatTime(e.createdAt)}
-                </span>
-                <p className="font-mono text-zinc-700 dark:text-zinc-300">{e.snippet}</p>
-              </li>
+                id={e.id}
+                source={e.source}
+                createdAt={e.createdAt}
+                snippet={e.snippet}
+              />
             ))}
           </ul>
         )}
-      </section>
-    </main>
+      </Section>
+    </PageShell>
+  );
+}
+
+function EntryCard({
+  id,
+  source,
+  createdAt,
+  snippet,
+  similarity,
+  threshold,
+}: {
+  id: number;
+  source: string;
+  createdAt: string;
+  snippet: string;
+  similarity?: number;
+  threshold?: number;
+}) {
+  return (
+    <li className="panel flex flex-col gap-2 py-4 sm:py-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-zinc-500 dark:text-zinc-400">
+        <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="font-medium text-zinc-700 dark:text-zinc-300">Entry {id}</span>
+          <span>{source}</span>
+          <span>{formatTime(createdAt)}</span>
+        </span>
+        {similarity !== undefined && (
+          <span
+            className={`font-medium tabular-nums ${
+              threshold !== undefined && similarity >= threshold
+                ? 'text-emerald-700 dark:text-emerald-400'
+                : ''
+            }`}
+          >
+            {(similarity * 100).toFixed(1)}% similar
+          </span>
+        )}
+      </div>
+      <p className="font-mono text-sm leading-6 text-zinc-700 dark:text-zinc-300">{snippet}</p>
+    </li>
   );
 }

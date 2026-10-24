@@ -1,4 +1,7 @@
+import { LetterTile } from '../ui';
+
 export interface ComparisonRow {
+  letter?: string;
   module: string;
   before: string;
   after: string;
@@ -12,28 +15,29 @@ export interface ComparisonRow {
  * exactly the disagreement this whole project exists to show. */
 export function ComparisonTable({ rows }: { rows: ComparisonRow[] }) {
   return (
-    <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-      <table className="min-w-full border-collapse text-left text-sm">
+    <div className="table-wrap">
+      <table className="data-table">
         <thead>
-          <tr className="text-xs text-zinc-500 dark:text-zinc-500">
-            <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">Module</th>
-            <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
-              Before attack
-            </th>
-            <th className="border-b border-zinc-200 px-4 py-2 dark:border-zinc-800">
-              After attack
-            </th>
+          <tr>
+            <th>Module</th>
+            <th>Before the attack</th>
+            <th>After the attack</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((r) => (
             <tr key={r.module}>
-              <td className="px-4 py-2 font-medium">{r.module}</td>
-              <td className="px-4 py-2 font-mono">{r.before}</td>
-              <td className="px-4 py-2 font-mono">
-                {r.after}
+              <td>
+                <span className="flex items-center gap-3 font-medium whitespace-nowrap">
+                  {r.letter && <LetterTile letter={r.letter} size="sm" />}
+                  {r.module}
+                </span>
+              </td>
+              <td className="align-middle">{r.before}</td>
+              <td className="align-middle">
+                <span className={r.after !== r.before ? 'font-medium' : ''}>{r.after}</span>
                 {r.note && (
-                  <span className="ml-2 font-sans text-xs text-zinc-500 dark:text-zinc-500">
+                  <span className="mt-0.5 block text-xs text-zinc-500 dark:text-zinc-400">
                     {r.note}
                   </span>
                 )}
